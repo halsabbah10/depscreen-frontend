@@ -1,0 +1,380 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* ── Clinical Sanctuary — Warm, editorial, calming ── */
+
+    /* Core surfaces */
+    --background: 35 25% 97%;        /* Warm cream (not pure white) */
+    --foreground: 220 15% 15%;       /* Deep ink (not pure black) */
+    --card: 35 20% 94%;              /* Slightly darker cream */
+    --card-foreground: 220 15% 15%;
+
+    /* Interactive */
+    --primary: 175 45% 32%;          /* Deep teal — trustworthy, medical, calming */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 35 15% 90%;
+    --secondary-foreground: 220 15% 20%;
+    --muted: 35 12% 88%;
+    --muted-foreground: 220 10% 45%;
+    --accent: 140 20% 55%;           /* Sage — wellness, growth */
+    --accent-foreground: 220 15% 15%;
+    --destructive: 10 50% 45%;       /* Muted rust (not bright red) */
+    --destructive-foreground: 0 0% 100%;
+
+    /* Structural */
+    --border: 35 15% 85%;
+    --input: 35 15% 92%;
+    --ring: 175 45% 32%;
+    --radius: 0.5rem;
+
+    /* Clinical Sanctuary accent tokens */
+    --clay: 20 50% 55%;              /* Warm clay — human touch */
+    --sage: 140 20% 55%;             /* Sage green — wellness */
+    --cream: 35 25% 97%;             /* Paper cream */
+    --ink: 220 15% 15%;              /* Deep reading ink */
+    --rust: 10 50% 45%;              /* Danger / crisis — muted, not alarming */
+  }
+
+  /* Dark theme (clinician workspace — optional) */
+  .dark {
+    --background: 220 16% 7%;
+    --foreground: 210 20% 92%;
+    --card: 220 16% 10%;
+    --card-foreground: 210 20% 92%;
+    --primary: 175 45% 48%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 220 14% 15%;
+    --secondary-foreground: 210 20% 85%;
+    --muted: 220 12% 16%;
+    --muted-foreground: 215 12% 55%;
+    --accent: 140 20% 55%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 10 55% 50%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 220 12% 16%;
+    --input: 220 12% 13%;
+    --ring: 175 45% 48%;
+    --clay: 20 50% 55%;
+    --sage: 140 20% 55%;
+    --cream: 220 16% 10%;
+    --ink: 210 20% 92%;
+    --rust: 10 55% 50%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    @apply antialiased;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-background text-foreground font-body;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+
+  /* Typography defaults */
+  h1, h2, h3 {
+    @apply font-display;
+  }
+
+  /* Reduced motion: disable all animations */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+@layer components {
+  /* ── Cards ── */
+  .card {
+    @apply bg-card border border-border rounded-lg;
+  }
+
+  .card-warm {
+    @apply bg-card border border-border rounded-lg shadow-sm;
+    box-shadow: 0 1px 3px hsl(35 20% 80% / 0.3);
+  }
+
+  /* ── Focus ── */
+  .focus-ring {
+    @apply transition-colors duration-200;
+  }
+  .focus-ring:focus-within {
+    @apply ring-1 ring-primary/30;
+  }
+
+  /* ── Severity badges ── */
+  .severity-none     { @apply bg-slate-100 text-slate-600 border border-slate-200; }
+  .severity-mild     { @apply bg-sky-50 text-sky-700 border border-sky-200; }
+  .severity-moderate { @apply bg-amber-50 text-amber-700 border border-amber-200; }
+  .severity-severe   { @apply bg-red-50 text-red-700 border border-red-200; }
+
+  /* ── Buttons ── */
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2.5
+           text-sm font-medium rounded-md transition-all duration-200
+           disabled:opacity-40 disabled:cursor-not-allowed
+           active:scale-[0.98];
+  }
+  .btn-primary {
+    @apply btn bg-primary text-primary-foreground hover:bg-primary/90
+           shadow-sm hover:shadow;
+  }
+  .btn-secondary {
+    @apply btn bg-secondary text-secondary-foreground hover:bg-secondary/80;
+  }
+  .btn-outline {
+    @apply btn border border-border text-foreground hover:bg-muted;
+  }
+  .btn-ghost {
+    @apply btn text-muted-foreground hover:text-foreground hover:bg-muted;
+  }
+  .btn-destructive {
+    @apply btn bg-destructive/10 text-destructive hover:bg-destructive/20;
+  }
+  .btn-warm {
+    @apply btn bg-clay/10 text-clay hover:bg-clay/20 border border-clay/20;
+  }
+
+  /* ── Inputs ── */
+  .input {
+    @apply w-full px-3 py-2.5 bg-input border border-border rounded-md
+           text-foreground placeholder:text-muted-foreground
+           focus:outline-none focus:ring-1 focus:ring-primary/30
+           transition-colors duration-200 font-body;
+  }
+
+  /* ── Safety banner — darkest element, structural roof ── */
+  .safety-banner {
+    @apply px-4 py-2 text-xs text-center;
+    background-color: hsl(220 15% 13%);
+    color: hsl(35 15% 65%);
+  }
+  .safety-banner strong {
+    color: hsl(35 20% 85%);
+  }
+
+  /* ── Breathing circle (signature component) ── */
+  .breathing-circle {
+    @apply w-12 h-12 rounded-full bg-primary/20 animate-breath;
+  }
+  .breathing-circle-sm {
+    @apply w-6 h-6 rounded-full bg-primary/20 animate-breath-fast;
+  }
+  .breathing-dot {
+    @apply w-2.5 h-2.5 rounded-full bg-primary animate-breath-dot;
+  }
+
+  /* ── Skeleton shimmer ── */
+  .skeleton {
+    @apply rounded animate-shimmer;
+    background: linear-gradient(
+      90deg,
+      hsl(var(--muted)) 0%,
+      hsl(35 20% 92%) 50%,
+      hsl(var(--muted)) 100%
+    );
+    background-size: 200% 100%;
+  }
+
+  /* ── Geometric background pattern (subtle) ── */
+  .geo-pattern {
+    background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23c4a882' fill-opacity='0.04'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+  }
+
+  /* ── Paper grain texture ── */
+  .paper-grain {
+    position: relative;
+  }
+  .paper-grain::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    opacity: 0.015;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* ── Editorial pull quote ── */
+  .pull-quote {
+    @apply pl-4 border-l-2 border-primary/30 italic text-muted-foreground;
+    font-family: 'Cormorant Garamond', Georgia, serif;
+  }
+}
+
+/* ── System-wide motion ─────────────────────────────────────────────────────
+ *
+ * For a mental health platform: everything moves gently, like a slow breath.
+ * No bounce, no snap, no shake. Warmth appearing, not flashing lights.
+ *
+ * Timing: 200-400ms for micro, 400-600ms for macro
+ * Easing: cubic-bezier(0.16, 1, 0.3, 1) — gentle deceleration
+ * prefers-reduced-motion: all motion disabled (already in base layer)
+ */
+
+@layer components {
+  /* ── Interactive element defaults ── */
+
+  /* All clickable elements get smooth transitions */
+  a, button, [role="button"], input, textarea, select, summary {
+    @apply transition-colors duration-200;
+    transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  /* ── Card hover: gentle warmth, not dramatic lift ── */
+  .card-warm {
+    transition: box-shadow 300ms cubic-bezier(0.16, 1, 0.3, 1),
+                border-color 300ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .card-warm:hover {
+    box-shadow: 0 2px 8px hsl(35 20% 75% / 0.25), 0 1px 3px hsl(35 20% 80% / 0.15);
+    border-color: hsl(35 15% 78%);
+  }
+
+  /* ── Button press: subtle compression, not bounce ── */
+  .btn:active:not(:disabled) {
+    transform: scale(0.98);
+    transition-duration: 100ms;
+  }
+  .btn {
+    transition: background-color 200ms cubic-bezier(0.16, 1, 0.3, 1),
+                color 200ms cubic-bezier(0.16, 1, 0.3, 1),
+                box-shadow 200ms cubic-bezier(0.16, 1, 0.3, 1),
+                transform 200ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  /* ── Focus-visible: gentle teal ring (accessibility) ── */
+  :focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px hsl(var(--background)), 0 0 0 4px hsl(var(--primary) / 0.4);
+    border-radius: inherit;
+  }
+
+  /* ── Input focus: border warmth ── */
+  .input {
+    transition: border-color 250ms cubic-bezier(0.16, 1, 0.3, 1),
+                box-shadow 250ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .input:focus {
+    border-color: hsl(var(--primary) / 0.4);
+    box-shadow: 0 0 0 3px hsl(var(--primary) / 0.08);
+  }
+
+  /* ── Link hover: gentle underline reveal ── */
+  .link-gentle {
+    @apply text-primary no-underline;
+    background-image: linear-gradient(hsl(var(--primary) / 0.3), hsl(var(--primary) / 0.3));
+    background-size: 0% 1px;
+    background-position: 0 100%;
+    background-repeat: no-repeat;
+    transition: background-size 300ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .link-gentle:hover {
+    background-size: 100% 1px;
+  }
+
+  /* ── Tab/pill transitions ── */
+  .tab-pill {
+    transition: background-color 250ms cubic-bezier(0.16, 1, 0.3, 1),
+                color 250ms cubic-bezier(0.16, 1, 0.3, 1),
+                box-shadow 250ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  /* ── List item hover: warm background tint ── */
+  .list-item-hover {
+    transition: background-color 250ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .list-item-hover:hover {
+    background-color: hsl(var(--primary) / 0.03);
+  }
+
+  /* ── Severity dot pulse: very gentle, not alarming ── */
+  .severity-dot-pulse {
+    animation: gentlePulse 3s ease-in-out infinite;
+  }
+  @keyframes gentlePulse {
+    0%, 100% { opacity: 0.7; }
+    50% { opacity: 1; }
+  }
+
+  /* ── Toast enter/exit ── */
+  [data-sonner-toast] {
+    transition: transform 400ms cubic-bezier(0.16, 1, 0.3, 1),
+                opacity 400ms cubic-bezier(0.16, 1, 0.3, 1) !important;
+  }
+
+  /* ── Smooth content reveal for dynamic sections ── */
+  .reveal {
+    animation: revealUp 500ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+  @keyframes revealUp {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ── Avatar hover: gentle ring appearance ── */
+  .avatar-hover {
+    transition: box-shadow 300ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .avatar-hover:hover {
+    box-shadow: 0 0 0 2px hsl(var(--primary) / 0.2);
+  }
+
+  /* ── Progress bar fill: slow, calming ── */
+  .progress-fill {
+    transition: width 800ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  /* ── Notification badge: gentle appear ── */
+  .badge-appear {
+    animation: badgeIn 400ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+  @keyframes badgeIn {
+    from { transform: scale(0.5); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+  }
+
+  /* ── Expandable sections (accordion-like) ── */
+  .expand-content {
+    overflow: hidden;
+    transition: max-height 400ms cubic-bezier(0.16, 1, 0.3, 1),
+                opacity 300ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  /* ── Tooltip: gentle fade ── */
+  .tooltip-fade {
+    animation: tooltipIn 200ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+  @keyframes tooltipIn {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  /* Scrollbar — gentle, unobtrusive */
+  .scrollbar-thin::-webkit-scrollbar { width: 5px; }
+  .scrollbar-thin::-webkit-scrollbar-track { @apply bg-transparent; }
+  .scrollbar-thin::-webkit-scrollbar-thumb { @apply bg-border rounded-full; }
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover { @apply bg-muted-foreground/30; }
+
+  /* Gentle transition utility classes */
+  .ease-gentle { transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1); }
+  .duration-gentle { transition-duration: 300ms; }
+}

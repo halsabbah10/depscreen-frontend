@@ -1,0 +1,113 @@
+{
+  "app": {
+    "name": "DepScreen",
+    "tagline": "AI-Powered Depression Screening",
+    "disclaimer": "Screening tool only — not a diagnostic instrument. In Bahrain, call 999 for emergencies."
+  },
+  "nav": {
+    "screening": "New Screening",
+    "history": "My History",
+    "trends": "Trends",
+    "chat": "Chat",
+    "dashboard": "Dashboard",
+    "patients": "Patients",
+    "profile": "Profile",
+    "notifications": "Notifications",
+    "logout": "Sign out"
+  },
+  "auth": {
+    "sign_in": "Sign In",
+    "create_account": "Create Account",
+    "email": "Email",
+    "password": "Password",
+    "full_name": "Full Name",
+    "role_patient": "Patient",
+    "role_clinician": "Clinician",
+    "clinician_code": "Clinician Code",
+    "clinician_code_hint": "Your therapist will provide this code to link your accounts.",
+    "signing_in": "Signing in...",
+    "creating_account": "Creating account..."
+  },
+  "screening": {
+    "title": "New Screening",
+    "subtitle": "Choose how you'd like to be screened. All methods analyze your text for DSM-5 depression symptoms.",
+    "checkin": "Guided Clinical Check-in",
+    "checkin_desc": "Answer 9 structured questions aligned with DSM-5 criteria. Takes 3-5 minutes.",
+    "social_media": "Social Media Analysis",
+    "social_media_desc": "We analyze your public Reddit or X posts for mental health-related language patterns.",
+    "upload": "Upload Text Data",
+    "upload_desc": "Paste or upload text from a social media data export or journal entries.",
+    "recommended": "Recommended",
+    "question_of": "Question {{current}} of {{total}}",
+    "answer_prompt": "Describe your experience...",
+    "no_wrong_answers": "You can be brief. There are no wrong answers.",
+    "breathe_prompt": "Breathe if you need.",
+    "min_remaining": "~{{minutes}} min remaining",
+    "submit": "Submit Screening"
+  },
+  "results": {
+    "severity_none": "No DSM-5 depression symptoms were detected.",
+    "severity_mild": "{{count}} symptom(s) detected. Below clinical threshold. Monitoring recommended.",
+    "severity_moderate": "{{count}} symptoms detected. Approaching clinical threshold. Professional evaluation recommended.",
+    "severity_severe": "{{count}} symptoms detected. Meets DSM-5 threshold. Prompt professional evaluation strongly recommended.",
+    "chat_about": "Chat About Results",
+    "crisis_title": "If you are in crisis — help is available now",
+    "crisis_body": "In Bahrain, call 999 for an ambulance — you will be taken to the Salmaniya Medical Complex psychiatric emergency department.",
+    "checklist_title": "DSM-5 Symptom Checklist",
+    "sentence_analysis": "Sentence-Level Analysis",
+    "ai_summary": "AI Screening Summary",
+    "verification": "Verification Analysis"
+  },
+  "chat": {
+    "title": "DepScreen Assistant",
+    "subtitle": "A supportive voice — not a replacement for professional care",
+    "placeholder": "Ask about your results or anything on your mind...",
+    "suggestions": {
+      "severity": "What does my severity level mean?",
+      "coping": "What are some coping strategies?",
+      "professional": "Should I see a professional?"
+    },
+    "empty": "Ask questions about your screening results, or just share how you're feeling.",
+    "standalone_empty": "Chat about anything on your mind. You're safe here."
+  },
+  "profile": {
+    "title": "Profile",
+    "edit": "Edit Profile",
+    "demographics": "Demographics",
+    "medical": "Medical Information",
+    "contacts": "Emergency Contacts",
+    "settings": "Settings",
+    "export_data": "Export Your Data",
+    "export_desc": "Download all your screenings, chat history, and documents.",
+    "danger_zone": "Danger Zone",
+    "deactivate": "Deactivate Account",
+    "deactivate_desc": "Deactivating your account will prevent future logins. Your data will be preserved for your clinician's records."
+  },
+  "common": {
+    "loading": "Loading...",
+    "error": "Something went wrong",
+    "retry": "Try again",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "back": "Back",
+    "next": "Next",
+    "previous": "Previous",
+    "submit": "Submit",
+    "close": "Close",
+    "search": "Search",
+    "no_data": "No data yet",
+    "created": "Created",
+    "updated": "Updated"
+  },
+  "empty_states": {
+    "no_screenings": "No screenings yet — whenever you're ready, we're here.",
+    "no_conversations": "Start a conversation whenever you'd like. We're here to listen.",
+    "no_medications": "No medications recorded. You can add them anytime.",
+    "no_allergies": "No allergies recorded.",
+    "no_notifications": "All caught up. Take a moment to breathe.",
+    "no_appointments": "No upcoming appointments.",
+    "no_patients": "No patients linked yet. Share your clinician code to get started."
+  }
+}
