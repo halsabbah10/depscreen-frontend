@@ -10,6 +10,10 @@
     {
       "source": "/health/:path*",
       "destination": "https://halsabbah-depscreen.hf.space/health/:path*"
+    },
+    {
+      "source": "/((?!api|health).*)",
+      "destination": "/index.html"
     }
   ]
 }
