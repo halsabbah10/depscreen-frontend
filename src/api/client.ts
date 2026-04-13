@@ -237,7 +237,7 @@ export const chat = {
   },
 
   async sendConversationMessage(conversationId: string, message: string): Promise<ChatMessage> {
-    return post<ChatMessage>(`/chat/conversations/${conversationId}/messages`, { message })
+    return post<ChatMessage>(`/chat/conversations/${conversationId}/message`, { message })
   },
 
   async getConversationMessages(conversationId: string): Promise<ChatHistoryResponse> {
