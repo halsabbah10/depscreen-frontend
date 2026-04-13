@@ -247,6 +247,74 @@ export const chat = {
   async archiveConversation(conversationId: string): Promise<void> {
     return del(`/chat/conversations/${conversationId}`)
   },
+
+  // Streaming — yields chunks via callback as they arrive from the LLM
+  async streamScreeningMessage(
+    screeningId: string,
+    message: string,
+    onChunk: (chunk: string) => void
+  ): Promise<void> {
+    return streamSSE(`/api/chat/screening/${screeningId}/stream`, { message }, onChunk)
+  },
+
+  async streamConversationMessage(
+    conversationId: string,
+    message: string,
+    onChunk: (chunk: string) => void
+  ): Promise<void> {
+    return streamSSE(`/api/chat/conversations/${conversationId}/message/stream`, { message }, onChunk)
+  },
+}
+
+// ── SSE Streaming Helper ─────────────────────────────────────────────────────
+
+async function streamSSE(
+  url: string,
+  body: Record<string, unknown>,
+  onChunk: (chunk: string) => void
+): Promise<void> {
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: JSON.stringify(body),
+  })
+
+  if (!response.ok) {
+    const text = await response.text()
+    throw new APIError(`Stream failed: ${response.status}`, response.status, text)
+  }
+
+  if (!response.body) {
+    throw new APIError('Stream has no body', 0)
+  }
+
+  const reader = response.body.getReader()
+  const decoder = new TextDecoder()
+  let buffer = ''
+
+  let done = false
+  while (!done) {
+    const result = await reader.read()
+    done = result.done
+    const value = result.value
+    if (done) break
+
+    buffer += decoder.decode(value, { stream: true })
+
+    // SSE: messages are separated by "\n\n" and start with "data: "
+    const lines = buffer.split('\n\n')
+    buffer = lines.pop() || '' // keep incomplete message for next iteration
+
+    for (const line of lines) {
+      const trimmed = line.trim()
+      if (!trimmed.startsWith('data: ')) continue
+      const data = trimmed.slice(6)
+      if (data === '[DONE]') return
+      // Unescape newlines that were escaped server-side
+      const unescaped = data.replace(/\\n/g, '\n')
+      onChunk(unescaped)
+    }
+  }
 }
 
 // ── Dashboard API (Clinician) ────────────────────────────────────────────────

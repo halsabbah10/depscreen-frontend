@@ -61,23 +61,33 @@ export function ChatPage() {
       id: tempId, role: 'user', content: text, created_at: new Date().toISOString(),
     }])
 
+    // Add a placeholder assistant message that we'll fill in as chunks arrive
+    const streamingId = `streaming-${Date.now()}`
+    const userMsgId = `user-${Date.now()}`
+
+    setMessages(prev => [
+      ...prev.filter(m => m.id !== tempId),
+      { id: userMsgId, role: 'user', content: text, created_at: new Date().toISOString() },
+      { id: streamingId, role: 'assistant', content: '', created_at: new Date().toISOString() },
+    ])
+
     try {
-      let response: ChatMessage
+      const appendChunk = (chunk: string) => {
+        setMessages(prev =>
+          prev.map(m => (m.id === streamingId ? { ...m, content: m.content + chunk } : m))
+        )
+      }
+
       if (isScreeningChat) {
-        response = await chatApi.sendScreeningMessage(screeningId!, text)
+        await chatApi.streamScreeningMessage(screeningId!, text, appendChunk)
       } else {
         // For standalone, create a conversation if none exists
         const conv = await chatApi.createConversation({ title: text.slice(0, 50), context_type: 'general' })
-        response = await chatApi.sendConversationMessage(conv.id, text)
+        await chatApi.streamConversationMessage(conv.id, text, appendChunk)
       }
-
-      setMessages(prev => [
-        ...prev.filter(m => m.id !== tempId),
-        { id: `user-${Date.now()}`, role: 'user', content: text, created_at: new Date().toISOString() },
-        response,
-      ])
     } catch (err: unknown) {
-      setMessages(prev => prev.filter(m => m.id !== tempId))
+      // Remove the streaming placeholder on error
+      setMessages(prev => prev.filter(m => m.id !== streamingId && m.id !== userMsgId))
       setInput(text)
       const errorDetail = err instanceof Object && 'detail' in err ? (err as { detail: string }).detail : null
       toast.error(errorDetail || 'Unable to send message. Please try again.')
