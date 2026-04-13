@@ -44,8 +44,9 @@ export function LoginPage() {
           setClinicianCode(result.user.clinician_code)
         }
       }
-    } catch (err: any) {
-      setError(err.detail || err.message || 'Something went wrong. Please try again.')
+    } catch (err: unknown) {
+      const e = err instanceof Object ? err as Record<string, unknown> : {}
+      setError((e.detail as string) || (e.message as string) || 'Something went wrong. Please try again.')
     } finally {
       setLoading(false)
     }

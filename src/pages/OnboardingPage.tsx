@@ -13,6 +13,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { ChevronRight, ChevronLeft, Heart, Check } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { patient as patientApi } from '../api/client'
+import type { ProfileUpdate } from '../types/api'
 import { useAuth } from '../contexts/AuthContext'
 import { BreathingDot, ProgressDots } from '../components/ui/BreathingCircle'
 
@@ -99,8 +100,9 @@ export function OnboardingPage() {
         await refreshUser()
         toast.success('Welcome to DepScreen. You are ready for your first screening.')
         navigate('/screening')
-      } catch (err: any) {
-        toast.error(err.detail || 'Could not complete onboarding. You can try again later.')
+      } catch (err: unknown) {
+        const errorDetail = err instanceof Object && 'detail' in err ? (err as { detail: string }).detail : null
+        toast.error(errorDetail || 'Could not complete onboarding. You can try again later.')
       } finally {
         setSaving(false)
       }
@@ -118,9 +120,10 @@ export function OnboardingPage() {
         if (cprNumber) data.cpr_number = cprNumber
         if (phone) data.phone = phone
         if (bloodType) data.blood_type = bloodType
-        await patientApi.updateProfile(data as any)
-      } catch (err: any) {
-        toast.error(err.detail || 'Could not save. You can continue and try again later.')
+        await patientApi.updateProfile(data as ProfileUpdate)
+      } catch (err: unknown) {
+        const errorDetail = err instanceof Object && 'detail' in err ? (err as { detail: string }).detail : null
+        toast.error(errorDetail || 'Could not save. You can continue and try again later.')
       } finally {
         setSaving(false)
       }
@@ -135,8 +138,9 @@ export function OnboardingPage() {
           relation: contactRelation,
           is_primary: true,
         })
-      } catch (err: any) {
-        toast.error(err.detail || 'Could not save contact. You can add it later from your profile.')
+      } catch (err: unknown) {
+        const errorDetail = err instanceof Object && 'detail' in err ? (err as { detail: string }).detail : null
+        toast.error(errorDetail || 'Could not save contact. You can add it later from your profile.')
       } finally {
         setSaving(false)
       }

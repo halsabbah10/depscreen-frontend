@@ -97,8 +97,9 @@ export function ScreeningPage() {
       const result = await ingest.submitCheckIn(responses)
       toast.success('Your responses have been received. Preparing your results.')
       navigate(`/results/${result.id}`)
-    } catch (err: any) {
-      toast.error(err.detail || 'Something went wrong. Please try again when you are ready.')
+    } catch (err: unknown) {
+      const errorDetail = err instanceof Object && 'detail' in err ? (err as { detail: string }).detail : null
+      toast.error(errorDetail || 'Something went wrong. Please try again when you are ready.')
     } finally {
       setLoading(false)
     }
@@ -116,9 +117,10 @@ export function ScreeningPage() {
         : await ingest.analyzeX(username.trim(), mentalHealthOnly)
       toast.success('Analysis complete. Taking you to your results.')
       navigate(`/results/${result.screening_id}`)
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const errorDetail = err instanceof Object && 'detail' in err ? (err as { detail: string }).detail : null
       toast.error(
-        err.detail ||
+        errorDetail ||
         `We could not retrieve posts from ${socialPlatform === 'reddit' ? 'Reddit' : 'X'}. Please double-check the username.`,
       )
     } finally {
@@ -133,11 +135,12 @@ export function ScreeningPage() {
     }
     setLoading(true)
     try {
-      const result: any = await ingest.uploadBulk(bulkContent)
+      const result = await ingest.uploadBulk(bulkContent) as { screening_id: string }
       toast.success('Your text has been analyzed. Preparing your results.')
       navigate(`/results/${result.screening_id}`)
-    } catch (err: any) {
-      toast.error(err.detail || 'Upload did not complete. Please try again.')
+    } catch (err: unknown) {
+      const errorDetail = err instanceof Object && 'detail' in err ? (err as { detail: string }).detail : null
+      toast.error(errorDetail || 'Upload did not complete. Please try again.')
     } finally {
       setLoading(false)
     }

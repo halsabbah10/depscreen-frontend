@@ -327,8 +327,8 @@ export const dashboard = {
     return put<CarePlanResponse>(`/dashboard/care-plans/${id}`, data)
   },
 
-  async getCarePlanTemplates(): Promise<any[]> {
-    return get<any[]>('/dashboard/care-plans/templates')
+  async getCarePlanTemplates(): Promise<Record<string, unknown>[]> {
+    return get<Record<string, unknown>[]>('/dashboard/care-plans/templates')
   },
 
   // Diagnoses

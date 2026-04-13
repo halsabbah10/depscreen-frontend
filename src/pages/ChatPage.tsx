@@ -76,10 +76,11 @@ export function ChatPage() {
         { id: `user-${Date.now()}`, role: 'user', content: text, created_at: new Date().toISOString() },
         response,
       ])
-    } catch (err: any) {
+    } catch (err: unknown) {
       setMessages(prev => prev.filter(m => m.id !== tempId))
       setInput(text)
-      toast.error(err.detail || 'Unable to send message. Please try again.')
+      const errorDetail = err instanceof Object && 'detail' in err ? (err as { detail: string }).detail : null
+      toast.error(errorDetail || 'Unable to send message. Please try again.')
     } finally {
       setSending(false)
       inputRef.current?.focus()

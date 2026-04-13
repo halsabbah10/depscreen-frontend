@@ -51,16 +51,16 @@ export function ProfilePage() {
   // New medication form
   const [newMedName, setNewMedName] = useState('')
   const [newMedDosage, setNewMedDosage] = useState('')
-  const [newMedFreq, _setNewMedFreq] = useState('daily')
+  const [newMedFreq] = useState('daily')
 
   // New allergy form
   const [newAllergen, setNewAllergen] = useState('')
-  const [newAllergySeverity, _setNewAllergySeverity] = useState('moderate')
+  const [newAllergySeverity] = useState('moderate')
 
   // New contact form
   const [newContactName, setNewContactName] = useState('')
   const [newContactPhone, setNewContactPhone] = useState('')
-  const [newContactRelation, _setNewContactRelation] = useState('parent')
+  const [newContactRelation] = useState('parent')
 
   useEffect(() => {
     if (tab === 'medical' && isPatient) {
@@ -93,8 +93,9 @@ export function ProfilePage() {
       toast.success('Profile updated successfully.')
       setNewPassword('')
       await refreshUser()
-    } catch (err: any) {
-      toast.error(err.detail || 'Could not update profile. Please try again.')
+    } catch (err: unknown) {
+      const errorDetail = err instanceof Object && 'detail' in err ? (err as { detail: string }).detail : null
+      toast.error(errorDetail || 'Could not update profile. Please try again.')
     } finally {
       setSaving(false)
     }
@@ -110,8 +111,9 @@ export function ProfilePage() {
       setNewMedName('')
       setNewMedDosage('')
       toast.success('Medication added.')
-    } catch (err: any) {
-      toast.error(err.detail || 'Could not add medication.')
+    } catch (err: unknown) {
+      const errorDetail = err instanceof Object && 'detail' in err ? (err as { detail: string }).detail : null
+      toast.error(errorDetail || 'Could not add medication.')
     }
   }
 
@@ -124,8 +126,9 @@ export function ProfilePage() {
       setAllergies(prev => [allergy, ...prev])
       setNewAllergen('')
       toast.success('Allergy recorded.')
-    } catch (err: any) {
-      toast.error(err.detail || 'Could not add allergy.')
+    } catch (err: unknown) {
+      const errorDetail = err instanceof Object && 'detail' in err ? (err as { detail: string }).detail : null
+      toast.error(errorDetail || 'Could not add allergy.')
     }
   }
 
@@ -138,12 +141,13 @@ export function ProfilePage() {
         relation: newContactRelation,
         is_primary: contacts.length === 0,
       })
-      setContacts(prev => [...prev, { ...result, id: result.contact_id } as any])
+      setContacts(prev => [...prev, { ...result, id: result.contact_id } as unknown as EmergencyContact])
       setNewContactName('')
       setNewContactPhone('')
       toast.success('Emergency contact added.')
-    } catch (err: any) {
-      toast.error(err.detail || 'Could not add contact.')
+    } catch (err: unknown) {
+      const errorDetail = err instanceof Object && 'detail' in err ? (err as { detail: string }).detail : null
+      toast.error(errorDetail || 'Could not add contact.')
     }
   }
 
