@@ -201,9 +201,17 @@ export function ChatPage() {
                       ? 'bg-primary text-white rounded-br-sm'
                       : 'bg-muted/60 text-foreground rounded-bl-sm'
                   }`}>
-                    {msg.content.split('\n').map((line, j) => (
-                      <p key={j} className={j > 0 ? 'mt-2' : ''}>{line}</p>
-                    ))}
+                    {msg.role === 'assistant' && msg.content === '' ? (
+                      <div className="flex items-center gap-2 py-0.5">
+                        <BreathingDot />
+                        <BreathingDot className="[animation-delay:0.5s]" />
+                        <BreathingDot className="[animation-delay:1s]" />
+                      </div>
+                    ) : (
+                      msg.content.split('\n').map((line, j) => (
+                        <p key={j} className={j > 0 ? 'mt-2' : ''}>{line}</p>
+                      ))
+                    )}
                   </div>
 
                   {msg.role === 'user' && (
@@ -220,23 +228,6 @@ export function ChatPage() {
                 </motion.div>
               ))}
             </AnimatePresence>
-
-            {sending && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="flex gap-3"
-              >
-                <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                  <Bot className="w-3.5 h-3.5 text-primary" />
-                </div>
-                <div className="bg-muted/60 px-4 py-3 rounded-xl rounded-bl-sm flex items-center gap-2">
-                  <BreathingDot />
-                  <BreathingDot className="[animation-delay:0.5s]" />
-                  <BreathingDot className="[animation-delay:1s]" />
-                </div>
-              </motion.div>
-            )}
 
             <div ref={bottomRef} />
           </div>
