@@ -270,7 +270,7 @@ export function isValidBahrainPhone(phone: string): boolean {
  */
 export function isValidCPR(cpr: string): boolean {
   if (!cpr) return false
-  const digits = cpr.replace(/[\s\-]+/g, '').trim()
+  const digits = cpr.replace(/[\s-]+/g, '').trim()
   if (!/^\d{9}$/.test(digits)) return false
 
   const yy = parseInt(digits.slice(0, 2), 10)
@@ -289,7 +289,7 @@ export function isValidCPR(cpr: string): boolean {
  * Format a CPR for display: '850423456' → '8504-2345-6'.
  */
 export function formatCPRDisplay(cpr: string): string {
-  const digits = cpr.replace(/[\s\-]+/g, '').trim()
+  const digits = cpr.replace(/[\s-]+/g, '').trim()
   if (digits.length !== 9 || !/^\d+$/.test(digits)) return cpr
   return `${digits.slice(0, 4)}-${digits.slice(4, 8)}-${digits.slice(8)}`
 }
@@ -299,7 +299,7 @@ export function formatCPRDisplay(cpr: string): string {
  */
 export function extractDobFromCPR(cpr: string): [number, number] | null {
   if (!isValidCPR(cpr)) return null
-  const digits = cpr.replace(/[\s\-]+/g, '').trim()
+  const digits = cpr.replace(/[\s-]+/g, '').trim()
   const yy = parseInt(digits.slice(0, 2), 10)
   const mm = parseInt(digits.slice(2, 4), 10)
 
