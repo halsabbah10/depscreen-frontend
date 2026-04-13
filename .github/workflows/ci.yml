@@ -1,0 +1,68 @@
+name: Frontend CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint:
+    name: ESLint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run ESLint
+        run: npm run lint
+
+  typecheck:
+    name: TypeScript Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type check
+        run: npm run typecheck
+
+  build:
+    name: Production Build
+    runs-on: ubuntu-latest
+    needs: [lint, typecheck]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+        env:
+          VITE_API_URL: https://halsabbah-depscreen.hf.space
+
+      - name: Verify build output
+        run: |
+          test -d dist || (echo "Build output missing" && exit 1)
+          test -f dist/index.html || (echo "index.html missing" && exit 1)
+          echo "Build output OK: $(du -sh dist | cut -f1)"
