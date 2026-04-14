@@ -1,18 +1,29 @@
 /**
- * ChatPage — Conversational psychoeducation.
+ * ChatPage — Conversational psychoeducation (ChatGPT-style).
  *
- * Clinical Sanctuary design: warm, editorial, calming.
- * Supports both screening-linked and standalone conversations.
- * Standalone chat has a sidebar with past conversations (ChatGPT-style).
+ * URL routes:
+ *   /chat                       → new conversation
+ *   /chat/c/:conversationId     → specific past conversation
+ *   /chat/screening/:screeningId → screening-linked (no sidebar)
+ *
+ * Features:
+ * - Date-grouped sidebar (Today / Yesterday / This Week / Older)
+ * - Markdown rendering for assistant messages
+ * - Copy-to-clipboard per message
+ * - Inline rename + delete per conversation
+ * - Auto-generated titles from first exchange (via LLM)
+ * - Streaming responses
  *
  * The user may be in a fragile state. Every interaction must feel safe.
  */
 
-import { useEffect, useState, useRef } from 'react'
-import { useParams, Link } from 'react-router-dom'
+import { useEffect, useState, useRef, useMemo } from 'react'
+import { useParams, useNavigate, Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ArrowLeft, Send, Bot, Plus, MessageCircle, Trash2 } from 'lucide-react'
+import { ArrowLeft, Send, Bot, Plus, MessageCircle, Trash2, Copy, Pencil } from 'lucide-react'
 import toast from 'react-hot-toast'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import { chat as chatApi, screening as screeningApi } from '../api/client'
 import type { ChatMessage, ScreeningResponse, ConversationResponse } from '../types/api'
 import { useAuth } from '../contexts/AuthContext'
@@ -22,7 +33,8 @@ import { EmptyState } from '../components/ui/EmptyState'
 import { formatRelative } from '../lib/localization'
 
 export function ChatPage() {
-  const { screeningId } = useParams<{ screeningId: string }>()
+  const { conversationId, screeningId } = useParams<{ conversationId: string; screeningId: string }>()
+  const navigate = useNavigate()
   const { user } = useAuth()
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [screening, setScreening] = useState<ScreeningResponse | null>(null)
@@ -30,12 +42,12 @@ export function ChatPage() {
   const [sending, setSending] = useState(false)
   const [loading, setLoading] = useState(true)
   const [conversations, setConversations] = useState<ConversationResponse[]>([])
-  const [activeConversationId, setActiveConversationId] = useState<string | null>(null)
+  const [renamingId, setRenamingId] = useState<string | null>(null)
+  const [renameValue, setRenameValue] = useState('')
   const bottomRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
 
-  // Determine if this is a screening-linked or standalone chat
-  const isScreeningChat = !!screeningId && screeningId !== 'conversations'
+  const isScreeningChat = !!screeningId
 
   // Load past conversations (only for standalone mode)
   useEffect(() => {
@@ -45,49 +57,81 @@ export function ChatPage() {
 
   // Load screening + its chat history if screening-linked
   useEffect(() => {
-    if (!isScreeningChat) {
-      setLoading(false)
-      return
-    }
+    if (!isScreeningChat) return
+    setLoading(true)
     Promise.all([
       chatApi.getScreeningChatHistory(screeningId!).then(r => setMessages(r.messages)).catch(() => {}),
       screeningApi.getById(screeningId!).then(setScreening).catch(() => {}),
     ]).finally(() => setLoading(false))
   }, [screeningId, isScreeningChat])
 
+  // Load specific conversation if URL has conversationId
+  useEffect(() => {
+    if (isScreeningChat) return
+    if (conversationId) {
+      setLoading(true)
+      chatApi.getConversationMessages(conversationId)
+        .then(r => setMessages(r.messages))
+        .catch(() => {
+          toast.error('That conversation could not be loaded.')
+          navigate('/chat', { replace: true })
+        })
+        .finally(() => setLoading(false))
+    } else {
+      setMessages([])
+      setLoading(false)
+    }
+  }, [conversationId, isScreeningChat, navigate])
+
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
-  const handleSelectConversation = async (convId: string) => {
-    setActiveConversationId(convId)
-    setMessages([])
-    try {
-      const history = await chatApi.getConversationMessages(convId)
-      setMessages(history.messages)
-    } catch {
-      toast.error('Could not load that conversation.')
-    }
-  }
-
   const handleNewConversation = () => {
-    setActiveConversationId(null)
-    setMessages([])
+    navigate('/chat')
     setInput('')
     inputRef.current?.focus()
   }
 
   const handleDeleteConversation = async (convId: string, e: React.MouseEvent) => {
     e.stopPropagation()
+    if (!confirm('Delete this conversation? This cannot be undone.')) return
     try {
       await chatApi.archiveConversation(convId)
       setConversations(prev => prev.filter(c => c.id !== convId))
-      if (activeConversationId === convId) {
-        handleNewConversation()
+      if (conversationId === convId) {
+        navigate('/chat', { replace: true })
       }
-      toast.success('Conversation removed.')
+      toast.success('Conversation deleted.')
     } catch {
-      toast.error('Could not remove that conversation.')
+      toast.error('Could not delete conversation.')
+    }
+  }
+
+  const handleStartRename = (conv: ConversationResponse, e: React.MouseEvent) => {
+    e.stopPropagation()
+    setRenamingId(conv.id)
+    setRenameValue(conv.title || '')
+  }
+
+  const handleCommitRename = async (convId: string) => {
+    const newTitle = renameValue.trim()
+    setRenamingId(null)
+    if (!newTitle) return
+    try {
+      await chatApi.renameConversation(convId, newTitle)
+      setConversations(prev => prev.map(c => (c.id === convId ? { ...c, title: newTitle } : c)))
+    } catch {
+      toast.error('Could not rename conversation.')
+    }
+  }
+
+  const handleCopyMessage = async (content: string) => {
+    try {
+      await navigator.clipboard.writeText(content)
+      toast.success('Copied to clipboard', { duration: 1500 })
+    } catch {
+      toast.error('Copy failed.')
     }
   }
 
@@ -99,6 +143,7 @@ export function ChatPage() {
 
     const streamingId = `streaming-${Date.now()}`
     const userMsgId = `user-${Date.now()}`
+    const isFirstMessage = messages.length === 0
 
     setMessages(prev => [
       ...prev,
@@ -116,16 +161,28 @@ export function ChatPage() {
       if (isScreeningChat) {
         await chatApi.streamScreeningMessage(screeningId!, text, appendChunk)
       } else {
-        // Use existing conversation if selected, otherwise create a new one
-        let convId = activeConversationId
+        let convId = conversationId
         if (!convId) {
           const conv = await chatApi.createConversation({ title: text.slice(0, 50), context_type: 'general' })
           convId = conv.id
-          setActiveConversationId(convId)
-          // Refresh conversations list so the new one appears in the sidebar
-          chatApi.getConversations().then(setConversations).catch(() => {})
+          // Navigate so URL reflects the new conversation (replace so back button doesn't go to empty /chat)
+          navigate(`/chat/c/${convId}`, { replace: true })
         }
         await chatApi.streamConversationMessage(convId, text, appendChunk)
+
+        // Auto-generate a better title after the first exchange
+        if (isFirstMessage && convId) {
+          chatApi.autoTitleConversation(convId)
+            .then(({ title }) => {
+              setConversations(prev =>
+                prev.map(c => (c.id === convId ? { ...c, title } : c))
+              )
+            })
+            .catch(() => {})
+        }
+
+        // Refresh sidebar list
+        chatApi.getConversations().then(setConversations).catch(() => {})
       }
     } catch (err: unknown) {
       setMessages(prev => prev.filter(m => m.id !== streamingId && m.id !== userMsgId))
@@ -145,6 +202,31 @@ export function ChatPage() {
     }
   }
 
+  // Group conversations by date
+  const groupedConversations = useMemo(() => {
+    const groups: Record<string, ConversationResponse[]> = {
+      Today: [],
+      Yesterday: [],
+      'This week': [],
+      Older: [],
+    }
+    const now = new Date()
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+    const yesterday = new Date(today); yesterday.setDate(today.getDate() - 1)
+    const weekStart = new Date(today); weekStart.setDate(today.getDate() - 7)
+
+    for (const c of conversations) {
+      // Backend returns naive UTC — append Z if missing
+      const raw = c.updated_at || c.created_at
+      const parsed = /[zZ]|[+-]\d{2}:?\d{2}$/.test(raw) ? new Date(raw) : new Date(raw + 'Z')
+      if (parsed >= today) groups.Today.push(c)
+      else if (parsed >= yesterday) groups.Yesterday.push(c)
+      else if (parsed >= weekStart) groups['This week'].push(c)
+      else groups.Older.push(c)
+    }
+    return groups
+  }, [conversations])
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -159,12 +241,11 @@ export function ChatPage() {
     'Should I see a professional?',
   ]
 
-  // ── Screening-linked chat: no sidebar (single-purpose view) ──
+  // ── Screening-linked chat: no sidebar ──
   if (isScreeningChat) {
     return (
       <PageTransition>
         <div className="max-w-3xl mx-auto flex flex-col" style={{ height: 'calc(100vh - 12rem)' }}>
-          {/* Header */}
           <div className="flex items-center justify-between mb-4">
             <Link to={`/results/${screeningId}`} className="btn-ghost text-xs">
               <ArrowLeft className="w-3.5 h-3.5" />
@@ -190,13 +271,14 @@ export function ChatPage() {
             isScreeningChat={true}
             inputRef={inputRef}
             bottomRef={bottomRef}
+            onCopyMessage={handleCopyMessage}
           />
         </div>
       </PageTransition>
     )
   }
 
-  // ── Standalone chat with ChatGPT-style sidebar ──
+  // ── Standalone chat with sidebar ──
   return (
     <PageTransition>
       <div className="max-w-6xl mx-auto flex gap-4" style={{ height: 'calc(100vh - 10rem)' }}>
@@ -218,35 +300,83 @@ export function ChatPage() {
                 Your past conversations will appear here.
               </div>
             ) : (
-              <ul className="py-2">
-                {conversations.map(conv => (
-                  <li key={conv.id}>
-                    <button
-                      onClick={() => handleSelectConversation(conv.id)}
-                      className={`w-full text-left px-4 py-2.5 text-xs flex items-start gap-2 group transition-colors ${
-                        activeConversationId === conv.id
-                          ? 'bg-primary/8 text-foreground'
-                          : 'text-muted-foreground hover:bg-muted/40 hover:text-foreground'
-                      }`}
-                    >
-                      <MessageCircle className="w-3.5 h-3.5 shrink-0 mt-0.5 opacity-60" />
-                      <div className="flex-1 min-w-0">
-                        <div className="truncate font-medium">{conv.title || 'Untitled'}</div>
-                        <div className="text-[10px] opacity-60 mt-0.5">
-                          {formatRelative(conv.updated_at)}
-                        </div>
+              <div className="py-2">
+                {(['Today', 'Yesterday', 'This week', 'Older'] as const).map(groupName => {
+                  const group = groupedConversations[groupName]
+                  if (!group || group.length === 0) return null
+                  return (
+                    <div key={groupName} className="mb-3">
+                      <div className="px-4 py-1.5 text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
+                        {groupName}
                       </div>
-                      <button
-                        onClick={(e) => handleDeleteConversation(conv.id, e)}
-                        className="opacity-0 group-hover:opacity-70 hover:!opacity-100 transition-opacity shrink-0"
-                        aria-label="Delete conversation"
-                      >
-                        <Trash2 className="w-3 h-3" />
-                      </button>
-                    </button>
-                  </li>
-                ))}
-              </ul>
+                      <ul>
+                        {group.map(conv => {
+                          const isActive = conv.id === conversationId
+                          const isRenaming = renamingId === conv.id
+                          return (
+                            <li key={conv.id}>
+                              <div
+                                onClick={() => !isRenaming && navigate(`/chat/c/${conv.id}`)}
+                                role="button"
+                                tabIndex={0}
+                                className={`w-full text-left px-4 py-2.5 text-xs flex items-start gap-2 group transition-colors cursor-pointer ${
+                                  isActive
+                                    ? 'bg-primary/8 text-foreground'
+                                    : 'text-muted-foreground hover:bg-muted/40 hover:text-foreground'
+                                }`}
+                              >
+                                <MessageCircle className="w-3.5 h-3.5 shrink-0 mt-0.5 opacity-60" />
+                                <div className="flex-1 min-w-0">
+                                  {isRenaming ? (
+                                    <input
+                                      autoFocus
+                                      type="text"
+                                      className="w-full bg-transparent border-b border-primary/50 outline-none text-xs py-0.5"
+                                      value={renameValue}
+                                      onChange={e => setRenameValue(e.target.value)}
+                                      onBlur={() => handleCommitRename(conv.id)}
+                                      onKeyDown={e => {
+                                        if (e.key === 'Enter') handleCommitRename(conv.id)
+                                        if (e.key === 'Escape') setRenamingId(null)
+                                      }}
+                                      onClick={e => e.stopPropagation()}
+                                    />
+                                  ) : (
+                                    <>
+                                      <div className="truncate font-medium">{conv.title || 'Untitled'}</div>
+                                      <div className="text-[10px] opacity-60 mt-0.5">
+                                        {formatRelative(conv.updated_at)}
+                                      </div>
+                                    </>
+                                  )}
+                                </div>
+                                {!isRenaming && (
+                                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                                    <button
+                                      onClick={(e) => handleStartRename(conv, e)}
+                                      className="hover:text-primary"
+                                      aria-label="Rename"
+                                    >
+                                      <Pencil className="w-3 h-3" />
+                                    </button>
+                                    <button
+                                      onClick={(e) => handleDeleteConversation(conv.id, e)}
+                                      className="hover:text-danger"
+                                      aria-label="Delete"
+                                    >
+                                      <Trash2 className="w-3 h-3" />
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            </li>
+                          )
+                        })}
+                      </ul>
+                    </div>
+                  )
+                })}
+              </div>
             )}
           </div>
         </aside>
@@ -264,13 +394,14 @@ export function ChatPage() {
           isScreeningChat={false}
           inputRef={inputRef}
           bottomRef={bottomRef}
+          onCopyMessage={handleCopyMessage}
         />
       </div>
     </PageTransition>
   )
 }
 
-// ── Chat panel (messages + input) ──
+// ── Chat panel ──
 interface ChatPanelProps {
   messages: ChatMessage[]
   input: string
@@ -283,10 +414,11 @@ interface ChatPanelProps {
   isScreeningChat: boolean
   inputRef: React.RefObject<HTMLTextAreaElement>
   bottomRef: React.RefObject<HTMLDivElement>
+  onCopyMessage: (content: string) => void
 }
 
 function ChatPanel(props: ChatPanelProps) {
-  const { messages, input, setInput, handleSend, handleKeyDown, sending, user, suggestions, isScreeningChat, inputRef, bottomRef } = props
+  const { messages, input, setInput, handleSend, handleKeyDown, sending, user, suggestions, isScreeningChat, inputRef, bottomRef, onCopyMessage } = props
 
   return (
     <div className="flex-1 flex flex-col card-warm overflow-hidden">
@@ -339,7 +471,7 @@ function ChatPanel(props: ChatPanelProps) {
               initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-              className={`flex gap-3 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+              className={`flex gap-3 group ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
             >
               {msg.role === 'assistant' && (
                 <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
@@ -347,23 +479,41 @@ function ChatPanel(props: ChatPanelProps) {
                 </div>
               )}
 
-              <div
-                className={`max-w-[80%] px-4 py-3 rounded-xl text-sm leading-relaxed font-body ${
-                  msg.role === 'user' ? 'bg-primary text-white rounded-br-sm' : 'bg-muted/60 text-foreground rounded-bl-sm'
-                }`}
-              >
-                {msg.role === 'assistant' && msg.content === '' ? (
-                  <div className="flex items-center gap-2 py-0.5">
-                    <BreathingDot />
-                    <BreathingDot className="[animation-delay:0.5s]" />
-                    <BreathingDot className="[animation-delay:1s]" />
-                  </div>
-                ) : (
-                  msg.content.split('\n').map((line, j) => (
-                    <p key={j} className={j > 0 ? 'mt-2' : ''}>
-                      {line}
-                    </p>
-                  ))
+              <div className="flex flex-col max-w-[80%]">
+                <div
+                  className={`px-4 py-3 rounded-xl text-sm leading-relaxed font-body ${
+                    msg.role === 'user' ? 'bg-primary text-white rounded-br-sm' : 'bg-muted/60 text-foreground rounded-bl-sm'
+                  }`}
+                >
+                  {msg.role === 'assistant' && msg.content === '' ? (
+                    <div className="flex items-center gap-2 py-0.5">
+                      <BreathingDot />
+                      <BreathingDot className="[animation-delay:0.5s]" />
+                      <BreathingDot className="[animation-delay:1s]" />
+                    </div>
+                  ) : msg.role === 'assistant' ? (
+                    <div className="prose-chat">
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
+                    </div>
+                  ) : (
+                    msg.content.split('\n').map((line, j) => (
+                      <p key={j} className={j > 0 ? 'mt-2' : ''}>
+                        {line}
+                      </p>
+                    ))
+                  )}
+                </div>
+
+                {/* Copy button — only on assistant messages with content */}
+                {msg.role === 'assistant' && msg.content && !msg.id.startsWith('streaming-') && (
+                  <button
+                    onClick={() => onCopyMessage(msg.content)}
+                    className="self-start mt-1 opacity-0 group-hover:opacity-100 transition-opacity text-[10px] text-muted-foreground hover:text-foreground flex items-center gap-1"
+                    aria-label="Copy message"
+                  >
+                    <Copy className="w-3 h-3" />
+                    Copy
+                  </button>
                 )}
               </div>
 

@@ -115,6 +115,15 @@ async function patch<T>(path: string, params?: Record<string, string>): Promise<
   return handleResponse<T>(response)
 }
 
+async function patchJson<T>(path: string, body: unknown): Promise<T> {
+  const response = await fetch(`${API_BASE}${path}`, {
+    method: 'PATCH',
+    headers: authHeaders(),
+    body: JSON.stringify(body),
+  })
+  return handleResponse<T>(response)
+}
+
 async function del<T>(path: string): Promise<T> {
   const response = await fetch(`${API_BASE}${path}`, {
     method: 'DELETE',
@@ -246,6 +255,14 @@ export const chat = {
 
   async archiveConversation(conversationId: string): Promise<void> {
     return del(`/chat/conversations/${conversationId}`)
+  },
+
+  async renameConversation(conversationId: string, title: string): Promise<{ status: string; title: string }> {
+    return patchJson(`/chat/conversations/${conversationId}`, { title })
+  },
+
+  async autoTitleConversation(conversationId: string): Promise<{ status: string; title: string }> {
+    return post(`/chat/conversations/${conversationId}/auto-title`, {})
   },
 
   // Streaming — yields chunks via callback as they arrive from the LLM
