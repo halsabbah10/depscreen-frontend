@@ -62,20 +62,19 @@ export function OnboardingPage() {
   const [docUploading, setDocUploading] = useState(false)
 
   // Pre-fill from existing user data (resume partially completed onboarding)
+  // Pre-fill form state from existing user data so returning users see what
+  // they've already saved. We populate every field so the form reflects the
+  // real state — no silent skip-ahead without visible filled data.
   useEffect(() => {
-    if (user) {
-      if (user.date_of_birth) setDateOfBirth(user.date_of_birth)
-      if (user.gender) setGender(user.gender)
-      if (user.cpr_number) setCprNumber(user.cpr_number)
-    }
-    // Also check onboarding status to skip ahead
-    patientApi.getOnboardingStatus().then(status => {
-      if (status.demographics_complete && status.contact_complete) {
-        setStep(3) // Skip to medical
-      } else if (status.demographics_complete) {
-        setStep(2) // Skip to contact
-      }
-    }).catch(() => {}) // Silently fail — start from beginning
+    if (!user) return
+    if (user.date_of_birth) setDateOfBirth(user.date_of_birth)
+    if (user.gender) setGender(user.gender)
+    if (user.nationality) setNationality(user.nationality)
+    if (user.cpr_number) setCprNumber(user.cpr_number)
+    if (user.phone) setPhone(user.phone.replace(/^\+973/, ''))
+    if (user.blood_type) setBloodType(user.blood_type)
+    if (user.reddit_username) setRedditUsername(user.reddit_username)
+    if (user.twitter_username) setTwitterUsername(user.twitter_username)
   }, [user])
 
   const completedSteps = new Set<number>()

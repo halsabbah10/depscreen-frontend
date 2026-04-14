@@ -116,7 +116,11 @@ export interface UserProfile {
   profile_picture_url: string | null
   date_of_birth: string | null
   gender: string | null
+  nationality: string | null
   cpr_number: string | null
+  phone: string | null
+  blood_type: string | null
+  timezone: string | null
   language_preference: string | null
   reddit_username: string | null
   twitter_username: string | null
