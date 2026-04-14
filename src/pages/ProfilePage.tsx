@@ -13,16 +13,17 @@ import { motion } from 'framer-motion'
 import toast from 'react-hot-toast'
 import {
   User, Shield, Download, AlertTriangle, Heart, Pill,
-  FileText, Phone, Camera,
+  FileText, Phone, Camera, CalendarCheck,
 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { patient as patientApi } from '../api/client'
 import type {
   MedicationResponse, AllergyResponse, DiagnosisResponse,
-  EmergencyContact, ProfileUpdate,
+  EmergencyContact, ProfileUpdate, ScreeningScheduleResponse,
 } from '../types/api'
-import { BreathingCircle } from '../components/ui/BreathingCircle'
+import { BreathingCircle, BreathingDot } from '../components/ui/BreathingCircle'
 import { PageTransition } from '../components/ui/PageTransition'
+import { formatDate } from '../lib/localization'
 
 type Tab = 'overview' | 'medical' | 'contacts' | 'settings'
 
@@ -509,6 +510,8 @@ export function ProfilePage() {
 
               {isPatient && (
                 <>
+                  <ScreeningScheduleCard />
+
                   <div className="card-warm p-5">
                     <h3 className="font-display text-lg text-foreground mb-2 flex items-center gap-2">
                       <Download className="w-4 h-4 text-primary" /> Export Your Data
@@ -548,5 +551,177 @@ export function ProfilePage() {
         </motion.div>
       </div>
     </PageTransition>
+  )
+}
+
+// ── Screening Schedule Card ───────────────────────────────────────────────────
+// Patient can configure how often they want to do check-ins. Backend's
+// APScheduler job reads `next_due_at` and sends reminder emails.
+
+function ScreeningScheduleCard() {
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [schedule, setSchedule] = useState<ScreeningScheduleResponse | null>(null)
+  const [frequency, setFrequency] = useState<string>('weekly')
+  const [dayOfWeek, setDayOfWeek] = useState<number>(1) // Monday
+  const [preferredTime, setPreferredTime] = useState<string>('09:00')
+
+  useEffect(() => {
+    patientApi
+      .getScreeningSchedule()
+      .then(s => {
+        if (s) {
+          setSchedule(s)
+          setFrequency(s.frequency || 'weekly')
+          if (typeof s.day_of_week === 'number') setDayOfWeek(s.day_of_week)
+          if (s.preferred_time) setPreferredTime(s.preferred_time)
+        }
+      })
+      .catch(() => setSchedule(null))
+      .finally(() => setLoading(false))
+  }, [])
+
+  const handleSave = async () => {
+    setSaving(true)
+    try {
+      const saved = await patientApi.createScreeningSchedule({
+        frequency: frequency as 'weekly' | 'biweekly' | 'monthly',
+        day_of_week: ['weekly', 'biweekly'].includes(frequency) ? dayOfWeek : undefined,
+        preferred_time: preferredTime,
+      })
+      setSchedule(saved)
+      toast.success(
+        schedule
+          ? 'Schedule updated. You\'ll get a reminder email when each check-in is due.'
+          : 'Schedule created. You\'ll receive a reminder email when your first check-in is due.'
+      )
+    } catch (err: unknown) {
+      const detail = err instanceof Object && 'detail' in err ? (err as { detail: string }).detail : null
+      toast.error(detail || 'Could not save schedule.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleTurnOff = async () => {
+    if (!schedule) return
+    if (!confirm('Turn off check-in reminders? You can re-enable them anytime.')) return
+    setSaving(true)
+    try {
+      await patientApi.deleteScreeningSchedule(schedule.id)
+      setSchedule(null)
+      toast.success('Reminders turned off.')
+    } catch {
+      toast.error('Could not turn off reminders.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="card-warm p-5">
+        <BreathingDot />
+      </div>
+    )
+  }
+
+  const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+
+  return (
+    <div className="card-warm p-5">
+      <h3 className="font-display text-lg text-foreground mb-2 flex items-center gap-2">
+        <CalendarCheck className="w-4 h-4 text-primary" /> Recurring check-ins
+      </h3>
+      <p className="text-sm text-muted-foreground font-body mb-4 leading-relaxed">
+        Regular check-ins help track how you've been feeling over time. We'll send you a
+        gentle email reminder when each one is due — no pressure.
+      </p>
+
+      {schedule && schedule.is_active !== false && schedule.next_due_at && (
+        <div className="mb-4 p-3 bg-primary/5 rounded-lg border-l-2 border-primary text-xs font-body">
+          <span className="font-medium text-foreground">Next check-in: </span>
+          <span className="text-muted-foreground">{formatDate(schedule.next_due_at)}</span>
+        </div>
+      )}
+
+      <div className="space-y-3">
+        <div>
+          <label className="block text-xs font-medium text-foreground mb-1.5 font-body">
+            How often?
+          </label>
+          <div className="grid grid-cols-3 gap-2">
+            {[
+              { value: 'weekly', label: 'Weekly' },
+              { value: 'biweekly', label: 'Every 2 weeks' },
+              { value: 'monthly', label: 'Monthly' },
+            ].map(opt => (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => setFrequency(opt.value)}
+                className={`py-2 rounded-lg border text-xs font-body transition-all ${
+                  frequency === opt.value
+                    ? 'border-primary bg-primary/5 text-primary font-medium'
+                    : 'border-border text-muted-foreground hover:border-primary/30'
+                }`}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {['weekly', 'biweekly'].includes(frequency) && (
+          <div>
+            <label className="block text-xs font-medium text-foreground mb-1.5 font-body">
+              Day of the week
+            </label>
+            <select
+              className="input py-2"
+              value={dayOfWeek}
+              onChange={e => setDayOfWeek(parseInt(e.target.value, 10))}
+            >
+              {dayNames.map((d, i) => (
+                <option key={i} value={i}>
+                  {d}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        <div>
+          <label className="block text-xs font-medium text-foreground mb-1.5 font-body">
+            Preferred time
+          </label>
+          <input
+            type="time"
+            className="input py-2 w-40"
+            value={preferredTime}
+            onChange={e => setPreferredTime(e.target.value)}
+          />
+        </div>
+      </div>
+
+      <div className="flex gap-2 mt-4">
+        <button
+          onClick={handleSave}
+          disabled={saving}
+          className="btn-primary text-xs flex-1"
+        >
+          {saving ? 'Saving...' : schedule ? 'Update schedule' : 'Start reminders'}
+        </button>
+        {schedule && schedule.is_active !== false && (
+          <button
+            onClick={handleTurnOff}
+            disabled={saving}
+            className="btn-ghost text-xs"
+          >
+            Turn off
+          </button>
+        )}
+      </div>
+    </div>
   )
 }
