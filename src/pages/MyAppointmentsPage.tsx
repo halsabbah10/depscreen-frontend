@@ -20,7 +20,7 @@ type Filter = 'upcoming' | 'past' | 'all'
 const APPOINTMENT_TYPE_LABELS: Record<string, string> = {
   intake: 'Initial assessment',
   followup: 'Follow-up',
-  crisis: 'Urgent',
+  crisis: 'Priority check-in',
   review: 'Review',
 }
 

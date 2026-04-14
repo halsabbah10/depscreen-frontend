@@ -47,7 +47,7 @@ export function ResultPage() {
         <AlertCircle className="w-10 h-10 text-destructive mx-auto mb-4" />
         <p className="font-display text-xl text-foreground mb-2">Something went wrong</p>
         <p className="text-sm text-muted-foreground mb-6 font-body">
-          {error || 'We could not find this screening. It may have been removed, or the link may be incorrect.'}
+          {error || "We're having trouble finding this screening. It might have been removed, or the link might not be right. You haven't lost anything — try heading back and opening it again."}
         </p>
         <Link
           to={isPatient ? '/history' : '/dashboard'}
@@ -186,7 +186,7 @@ export function ResultPage() {
               {explanation_report.why_model_thinks_this && (
                 <div>
                   <h3 className="font-display text-lg text-foreground mb-1">
-                    How the model reached this conclusion
+                    What the model noticed
                   </h3>
                   <p className="text-sm text-muted-foreground leading-relaxed font-body">
                     {explanation_report.why_model_thinks_this}
@@ -198,7 +198,7 @@ export function ResultPage() {
               {explanation_report.key_evidence_quotes.length > 0 && (
                 <div className="space-y-3 mt-4">
                   <h3 className="font-display text-lg text-foreground">
-                    Key evidence
+                    Moments that stood out
                   </h3>
                   {explanation_report.key_evidence_quotes.map((quote, i) => (
                     <blockquote key={i} className="pull-quote text-base leading-relaxed">
@@ -226,53 +226,54 @@ export function ResultPage() {
             <hr className="border-border" />
             <div className="space-y-4">
               <h2 className="font-display text-2xl text-foreground">
-                Verification
+                Honesty checks
               </h2>
               <p className="text-sm text-muted-foreground font-body">
-                These checks help ensure the analysis is reliable and the input is genuine.
+                These are self-checks on the model's reasoning — not a judgment about you.
+                They help your clinician see where the analysis is solid and where it might need a closer look.
               </p>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                {/* Evidence support */}
+                {/* Evidence support — does the model's reasoning hold together? */}
                 <div className="card-warm p-4 text-center">
                   <p className="text-xs text-muted-foreground font-body uppercase tracking-wider mb-2">
-                    Evidence Support
+                    Reasoning Consistency
                   </p>
                   <p className={`font-display text-2xl ${evidenceSupported ? 'text-primary' : 'text-amber-600'}`}>
-                    {evidenceSupported ? 'Supported' : 'Partial'}
+                    {evidenceSupported ? 'Consistent' : 'Partial'}
                   </p>
                   <p className="text-xs text-muted-foreground/60 font-body mt-1">
-                    {coherencePercent}% coherence
+                    {coherencePercent}% match
                   </p>
                 </div>
 
-                {/* Authenticity */}
+                {/* "Authenticity" reframed as clarity — not an accusation */}
                 <div className="card-warm p-4 text-center">
                   <p className="text-xs text-muted-foreground font-body uppercase tracking-wider mb-2">
-                    Input Authenticity
+                    Clarity of your words
                   </p>
-                  <p className={`font-display text-2xl ${isAuthentic ? 'text-primary' : 'text-destructive'}`}>
-                    {isAuthentic ? 'Authentic' : 'Flagged'}
+                  <p className={`font-display text-2xl ${isAuthentic ? 'text-primary' : 'text-amber-600'}`}>
+                    {isAuthentic ? 'Clear' : 'Harder to read'}
                   </p>
                   <p className="text-xs text-muted-foreground/60 font-body mt-1">
                     {authenticityPercent}% score
                   </p>
                 </div>
 
-                {/* Trust level */}
+                {/* Confidence, not "trust" — trust framing sounds like the patient is on trial */}
                 <div className="card-warm p-4 text-center">
                   <p className="text-xs text-muted-foreground font-body uppercase tracking-wider mb-2">
-                    Trust Level
+                    Model Confidence
                   </p>
                   <p className={`font-display text-2xl ${
                     trustLevel === 'high' ? 'text-primary' :
-                    trustLevel === 'medium' ? 'text-amber-600' : 'text-destructive'
+                    trustLevel === 'medium' ? 'text-amber-600' : 'text-amber-700'
                   }`}>
                     {trustLevel.charAt(0).toUpperCase() + trustLevel.slice(1)}
                   </p>
                   {confounders.length > 0 && (
                     <p className="text-xs text-muted-foreground/60 font-body mt-1">
-                      {confounders.length} potential confounder{confounders.length > 1 ? 's' : ''}
+                      {confounders.length} thing{confounders.length > 1 ? 's' : ''} worth a second look
                     </p>
                   )}
                 </div>

@@ -28,7 +28,7 @@ const STEPS: Step[] = [
   { id: 'demographics', title: 'About You', description: 'Basic personal information' },
   { id: 'contact', title: 'Contact', description: 'How to reach you' },
   { id: 'medical', title: 'Medical', description: 'Health background' },
-  { id: 'emergency', title: 'Emergency Contact', description: 'Someone we can reach in a crisis' },
+  { id: 'emergency', title: 'Emergency Contact', description: 'Someone who knows you, just in case' },
   { id: 'social', title: 'Social Media', description: 'Optional — public posts help screening' },
   { id: 'documents', title: 'Documents', description: 'Upload existing records (optional)' },
   { id: 'complete', title: 'All Set', description: 'You are ready' },
@@ -157,7 +157,7 @@ export function OnboardingPage() {
         } catch {
           /* ignore refresh failures */
         }
-        toast.success('Welcome to DepScreen. You are ready for your first screening.')
+        toast.success('Thank you for trusting us with this. Your first screening is ready whenever you feel comfortable.')
         setSaving(false)
         navigate('/screening')
       }
@@ -435,9 +435,9 @@ export function OnboardingPage() {
               <div className="card-warm p-6 space-y-5">
                 <h2 className="font-display text-2xl text-foreground font-light">Social Media (optional)</h2>
                 <p className="text-sm text-muted-foreground font-body leading-relaxed">
-                  If you're comfortable, share your Reddit or X/Twitter username. We'll use your
-                  public posts to provide richer screening analysis. Private accounts won't be accessed.
-                  You can skip this entirely.
+                  With your permission, we can look at your public posts to understand how you've been
+                  expressing yourself. Nothing private is touched, and you can turn this off any time —
+                  or skip entirely if it's not for you.
                 </p>
                 <div>
                   <label className="block text-sm font-medium mb-2 font-body">Reddit username</label>

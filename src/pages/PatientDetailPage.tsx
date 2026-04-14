@@ -1,20 +1,20 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import {
   ArrowLeft, ClipboardList, BarChart3, FileText, ClipboardCheck, UserCircle2,
   ChevronRight, AlertTriangle, TrendingUp, TrendingDown, Minus, Plus, Save, Target, Sparkles,
-  Phone, Pill, Activity, Heart, Calendar,
+  Phone, Pill, Activity, Heart, Calendar, Pencil, Trash2, X,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { dashboard } from '../api/client'
-import type { PatientSummary, ScreeningHistoryResponse, SymptomTrend, PatientDocument, CarePlanResponse, PatientFullProfile } from '../types/api'
+import type { PatientSummary, ScreeningHistoryResponse, SymptomTrend, PatientDocument, CarePlanResponse, PatientFullProfile, MedicationResponse, MedicationCreate, ScreeningScheduleResponse, ScreeningScheduleCreate } from '../types/api'
 import { SEVERITY_COLORS, SYMPTOM_COLORS } from '../types/api'
 import { formatDate } from '../lib/localization'
 import { PageTransition, StaggerChildren, StaggerItem } from '../components/ui/PageTransition'
 import { BreathingCircle } from '../components/ui/BreathingCircle'
 import { EmptyState } from '../components/ui/EmptyState'
 
-type Tab = 'profile' | 'screenings' | 'trends' | 'documents' | 'care-plan'
+type Tab = 'profile' | 'screenings' | 'trends' | 'documents' | 'care-plan' | 'messages'
 
 const TABS: { id: Tab; label: string; icon: typeof ClipboardList }[] = [
   { id: 'profile', label: 'Profile', icon: UserCircle2 },
@@ -22,6 +22,7 @@ const TABS: { id: Tab; label: string; icon: typeof ClipboardList }[] = [
   { id: 'trends', label: 'Trends', icon: BarChart3 },
   { id: 'documents', label: 'Documents', icon: FileText },
   { id: 'care-plan', label: 'Care Plan', icon: ClipboardCheck },
+  { id: 'messages', label: 'Messages', icon: Heart },
 ]
 
 const SEVERITY_DOT: Record<string, string> = {
@@ -359,6 +360,8 @@ export function PatientDetailPage() {
       )}
 
       {tab === 'care-plan' && patientId && <CarePlanTab patientId={patientId} />}
+
+      {tab === 'messages' && patientId && <MessagesTab patientId={patientId} />}
     </PageTransition>
   )
 }
@@ -855,35 +858,7 @@ function ProfileTab({ patientId }: { patientId: string }) {
         <DataRow label="X / Twitter" value={c.twitter_username ? `@${c.twitter_username}` : null} />
       </Section>
 
-      <Section icon={Pill} title={`Medications (${profile.medications.length})`}>
-        {profile.medications.length === 0 ? (
-          <p className="text-sm text-muted-foreground font-body italic">No medications on record.</p>
-        ) : (
-          <div className="space-y-2">
-            {profile.medications.map(m => (
-              <div key={m.id} className="flex items-start gap-3 py-2 border-b border-border last:border-0">
-                <div className="flex-1">
-                  <div className="flex items-center gap-2">
-                    <span className="font-body font-medium text-sm text-foreground">{m.name}</span>
-                    {m.dosage && <span className="text-xs text-muted-foreground font-body">· {m.dosage}</span>}
-                    {m.frequency && <span className="text-xs text-muted-foreground font-body">· {m.frequency}</span>}
-                    {!m.is_active && (
-                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-muted text-muted-foreground">Inactive</span>
-                    )}
-                  </div>
-                  {(m.prescribed_by || m.start_date) && (
-                    <p className="text-[11px] text-muted-foreground font-body mt-0.5">
-                      {m.prescribed_by && `Prescribed by ${m.prescribed_by}`}
-                      {m.start_date && ` · Started ${formatDate(m.start_date)}`}
-                    </p>
-                  )}
-                  {m.notes && <p className="text-xs text-muted-foreground font-body italic mt-1">"{m.notes}"</p>}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </Section>
+      <MedicationsSection patientId={patientId} />
 
       <Section icon={Activity} title={`Allergies (${profile.allergies.length})`}>
         {profile.allergies.length === 0 ? (
@@ -965,20 +940,647 @@ function ProfileTab({ patientId }: { patientId: string }) {
         )}
       </Section>
 
-      {profile.screening_schedule && (
-        <Section icon={Calendar} title="Recurring Check-ins">
-          <DataRow label="Frequency" value={<span className="capitalize">{profile.screening_schedule.frequency}</span>} />
-          {profile.screening_schedule.preferred_time && (
-            <DataRow label="Preferred time" value={profile.screening_schedule.preferred_time} />
-          )}
-          {profile.screening_schedule.next_due_at && (
-            <DataRow label="Next due" value={formatDate(profile.screening_schedule.next_due_at)} />
-          )}
-          {profile.screening_schedule.last_completed_at && (
-            <DataRow label="Last completed" value={formatDate(profile.screening_schedule.last_completed_at)} />
-          )}
-        </Section>
+      <ScreeningScheduleSection patientId={patientId} />
+    </div>
+  )
+}
+
+// ── Medications Section — editable for clinicians ───────────────────────────
+
+const FREQUENCY_OPTIONS: { value: string; label: string }[] = [
+  { value: '', label: '—' },
+  { value: 'daily', label: 'Daily' },
+  { value: 'twice_daily', label: 'Twice daily' },
+  { value: 'three_times_daily', label: 'Three times daily' },
+  { value: 'weekly', label: 'Weekly' },
+  { value: 'as_needed', label: 'As needed' },
+]
+
+const FREQUENCY_LABELS: Record<string, string> = {
+  daily: 'Daily',
+  twice_daily: 'Twice daily',
+  three_times_daily: 'Three times daily',
+  weekly: 'Weekly',
+  as_needed: 'As needed',
+}
+
+function emptyMedForm(): MedicationCreate {
+  return { name: '', dosage: '', frequency: '', start_date: '', end_date: '', prescribed_by: '', notes: '' }
+}
+
+function MedicationsSection({ patientId }: { patientId: string }) {
+  const [meds, setMeds] = useState<MedicationResponse[]>([])
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [adding, setAdding] = useState(false)
+  const [form, setForm] = useState<MedicationCreate>(emptyMedForm())
+  const [submitting, setSubmitting] = useState(false)
+
+  const reload = async () => {
+    try {
+      const fresh = await dashboard.getPatientMedications(patientId)
+      setMeds(fresh)
+    } catch {
+      toast.error('Could not refresh medications.')
+    }
+  }
+
+  useEffect(() => {
+    reload()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [patientId])
+
+  const startEdit = (m: MedicationResponse) => {
+    setAdding(false)
+    setEditingId(m.id)
+    setForm({
+      name: m.name,
+      dosage: m.dosage || '',
+      frequency: m.frequency || '',
+      start_date: m.start_date || '',
+      end_date: m.end_date || '',
+      prescribed_by: m.prescribed_by || '',
+      notes: m.notes || '',
+    })
+  }
+
+  const startAdd = () => {
+    setEditingId(null)
+    setAdding(true)
+    setForm(emptyMedForm())
+  }
+
+  const cancel = () => {
+    setEditingId(null)
+    setAdding(false)
+    setForm(emptyMedForm())
+  }
+
+  const submit = async () => {
+    if (!form.name.trim()) {
+      toast.error('Medication name is required.')
+      return
+    }
+    setSubmitting(true)
+    try {
+      const payload: MedicationCreate = {
+        name: form.name.trim(),
+        dosage: form.dosage?.trim() || undefined,
+        frequency: form.frequency || undefined,
+        start_date: form.start_date || undefined,
+        end_date: form.end_date || undefined,
+        prescribed_by: form.prescribed_by?.trim() || undefined,
+        notes: form.notes?.trim() || undefined,
+      }
+      if (editingId) {
+        await dashboard.updatePatientMedication(editingId, payload)
+        toast.success('Medication updated.')
+      } else {
+        await dashboard.addPatientMedication(patientId, payload)
+        toast.success('Medication added.')
+      }
+      cancel()
+      await reload()
+    } catch (err) {
+      const detail = err instanceof Object && 'detail' in err ? (err as { detail: string }).detail : null
+      toast.error(detail || 'Could not save medication.')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const remove = async (m: MedicationResponse) => {
+    if (!confirm(`Mark "${m.name}" as inactive? This keeps the record but removes it from the active list.`)) return
+    try {
+      await dashboard.deactivatePatientMedication(m.id)
+      toast.success('Medication marked inactive.')
+      await reload()
+    } catch {
+      toast.error('Could not update medication.')
+    }
+  }
+
+  const formOpen = adding || editingId !== null
+
+  return (
+    <Section icon={Pill} title={`Medications (${meds.length})`}>
+      {meds.length === 0 && !formOpen ? (
+        <p className="text-sm text-muted-foreground font-body italic mb-3">No medications on record.</p>
+      ) : (
+        <div className="space-y-2 mb-3">
+          {meds.map(m => (
+            <div key={m.id} className="flex items-start gap-3 py-2 border-b border-border last:border-0">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="font-body font-medium text-sm text-foreground">{m.name}</span>
+                  {m.dosage && <span className="text-xs text-muted-foreground font-body">· {m.dosage}</span>}
+                  {m.frequency && (
+                    <span className="text-xs text-muted-foreground font-body">
+                      · {FREQUENCY_LABELS[m.frequency] || m.frequency}
+                    </span>
+                  )}
+                  {!m.is_active && (
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-muted text-muted-foreground">Inactive</span>
+                  )}
+                </div>
+                {(m.prescribed_by || m.start_date) && (
+                  <p className="text-[11px] text-muted-foreground font-body mt-0.5">
+                    {m.prescribed_by && `Prescribed by ${m.prescribed_by}`}
+                    {m.start_date && ` · Started ${formatDate(m.start_date)}`}
+                    {m.end_date && ` · Ended ${formatDate(m.end_date)}`}
+                  </p>
+                )}
+                {m.notes && <p className="text-xs text-muted-foreground font-body italic mt-1">"{m.notes}"</p>}
+              </div>
+              <div className="flex items-center gap-1 shrink-0">
+                <button
+                  onClick={() => startEdit(m)}
+                  className="p-1.5 rounded-md text-muted-foreground hover:text-primary hover:bg-muted transition-colors"
+                  title="Edit"
+                  aria-label="Edit medication"
+                >
+                  <Pencil className="w-3.5 h-3.5" />
+                </button>
+                {m.is_active && (
+                  <button
+                    onClick={() => remove(m)}
+                    className="p-1.5 rounded-md text-muted-foreground hover:text-rose-600 hover:bg-rose-50 transition-colors"
+                    title="Mark inactive"
+                    aria-label="Mark medication inactive"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
       )}
+
+      {!formOpen && (
+        <button onClick={startAdd} className="text-xs font-body text-primary hover:underline flex items-center gap-1">
+          <Plus className="w-3.5 h-3.5" /> Add medication
+        </button>
+      )}
+
+      {formOpen && (
+        <div className="border border-border rounded-lg p-3 bg-background/60 mt-2">
+          <div className="flex items-center justify-between mb-3">
+            <h4 className="text-xs font-body font-medium text-foreground uppercase tracking-wider">
+              {editingId ? 'Edit medication' : 'Add medication'}
+            </h4>
+            <button
+              onClick={cancel}
+              className="p-1 rounded-md text-muted-foreground hover:text-foreground"
+              aria-label="Cancel"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <label className="col-span-2 block">
+              <span className="text-[11px] text-muted-foreground font-body uppercase tracking-wider">Name *</span>
+              <input
+                type="text"
+                value={form.name}
+                onChange={e => setForm({ ...form, name: e.target.value })}
+                className="mt-1 w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm font-body focus:outline-none focus:ring-2 focus:ring-primary/30"
+                placeholder="e.g., Sertraline"
+              />
+            </label>
+            <label className="block">
+              <span className="text-[11px] text-muted-foreground font-body uppercase tracking-wider">Dosage</span>
+              <input
+                type="text"
+                value={form.dosage || ''}
+                onChange={e => setForm({ ...form, dosage: e.target.value })}
+                className="mt-1 w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm font-body focus:outline-none focus:ring-2 focus:ring-primary/30"
+                placeholder="e.g., 50mg"
+              />
+            </label>
+            <label className="block">
+              <span className="text-[11px] text-muted-foreground font-body uppercase tracking-wider">Frequency</span>
+              <select
+                value={form.frequency || ''}
+                onChange={e => setForm({ ...form, frequency: e.target.value })}
+                className="mt-1 w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm font-body focus:outline-none focus:ring-2 focus:ring-primary/30"
+              >
+                {FREQUENCY_OPTIONS.map(o => (
+                  <option key={o.value} value={o.value}>{o.label}</option>
+                ))}
+              </select>
+            </label>
+            <label className="block">
+              <span className="text-[11px] text-muted-foreground font-body uppercase tracking-wider">Start date</span>
+              <input
+                type="date"
+                value={form.start_date || ''}
+                onChange={e => setForm({ ...form, start_date: e.target.value })}
+                className="mt-1 w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm font-body focus:outline-none focus:ring-2 focus:ring-primary/30"
+              />
+            </label>
+            <label className="block">
+              <span className="text-[11px] text-muted-foreground font-body uppercase tracking-wider">End date</span>
+              <input
+                type="date"
+                value={form.end_date || ''}
+                onChange={e => setForm({ ...form, end_date: e.target.value })}
+                className="mt-1 w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm font-body focus:outline-none focus:ring-2 focus:ring-primary/30"
+              />
+            </label>
+            <label className="col-span-2 block">
+              <span className="text-[11px] text-muted-foreground font-body uppercase tracking-wider">Prescribed by</span>
+              <input
+                type="text"
+                value={form.prescribed_by || ''}
+                onChange={e => setForm({ ...form, prescribed_by: e.target.value })}
+                className="mt-1 w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm font-body focus:outline-none focus:ring-2 focus:ring-primary/30"
+                placeholder="Defaults to your name"
+              />
+            </label>
+            <label className="col-span-2 block">
+              <span className="text-[11px] text-muted-foreground font-body uppercase tracking-wider">Notes</span>
+              <textarea
+                value={form.notes || ''}
+                onChange={e => setForm({ ...form, notes: e.target.value })}
+                rows={2}
+                className="mt-1 w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm font-body focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
+                placeholder="Side effects to watch for, instructions, etc."
+              />
+            </label>
+          </div>
+          <div className="flex items-center justify-end gap-2 mt-3">
+            <button onClick={cancel} className="text-xs font-body text-muted-foreground hover:text-foreground">
+              Cancel
+            </button>
+            <button
+              onClick={submit}
+              disabled={submitting || !form.name.trim()}
+              className="text-xs font-body bg-primary text-primary-foreground px-3 py-1.5 rounded-md hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {submitting ? 'Saving...' : editingId ? 'Save changes' : 'Add medication'}
+            </button>
+          </div>
+        </div>
+      )}
+    </Section>
+  )
+}
+
+// ── Screening Schedule Section — clinician assigns recurring check-ins ──────
+
+const FREQUENCY_CHOICES: { value: string; label: string }[] = [
+  { value: 'weekly', label: 'Weekly' },
+  { value: 'biweekly', label: 'Every two weeks' },
+  { value: 'monthly', label: 'Monthly' },
+  { value: 'custom', label: 'Custom (every N days)' },
+]
+
+const DAY_CHOICES = [
+  { value: 0, label: 'Monday' },
+  { value: 1, label: 'Tuesday' },
+  { value: 2, label: 'Wednesday' },
+  { value: 3, label: 'Thursday' },
+  { value: 4, label: 'Friday' },
+  { value: 5, label: 'Saturday' },
+  { value: 6, label: 'Sunday' },
+]
+
+const FREQ_LABEL: Record<string, string> = {
+  weekly: 'Weekly',
+  biweekly: 'Every two weeks',
+  monthly: 'Monthly',
+  custom: 'Custom',
+}
+
+const DAY_LABEL: Record<number, string> = {
+  0: 'Monday', 1: 'Tuesday', 2: 'Wednesday', 3: 'Thursday', 4: 'Friday', 5: 'Saturday', 6: 'Sunday',
+}
+
+function ScreeningScheduleSection({ patientId }: { patientId: string }) {
+  const [schedule, setSchedule] = useState<ScreeningScheduleResponse | null>(null)
+  const [editing, setEditing] = useState(false)
+  const [frequency, setFrequency] = useState<string>('weekly')
+  const [dayOfWeek, setDayOfWeek] = useState<number>(0)
+  const [customDays, setCustomDays] = useState<number>(14)
+  const [preferredTime, setPreferredTime] = useState<string>('09:00')
+  const [submitting, setSubmitting] = useState(false)
+
+  const reload = async () => {
+    try {
+      const s = await dashboard.getPatientScreeningSchedule(patientId)
+      setSchedule(s)
+    } catch {
+      toast.error('Could not load screening schedule.')
+    }
+  }
+
+  useEffect(() => {
+    reload()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [patientId])
+
+  const startEdit = () => {
+    if (schedule) {
+      setFrequency(schedule.frequency)
+      setDayOfWeek(schedule.day_of_week ?? 0)
+      setCustomDays(schedule.custom_days ?? 14)
+      setPreferredTime(schedule.preferred_time || '09:00')
+    } else {
+      setFrequency('weekly')
+      setDayOfWeek(0)
+      setCustomDays(14)
+      setPreferredTime('09:00')
+    }
+    setEditing(true)
+  }
+
+  const submit = async () => {
+    setSubmitting(true)
+    try {
+      const payload: ScreeningScheduleCreate = { frequency, preferred_time: preferredTime || undefined }
+      if (frequency === 'weekly' || frequency === 'biweekly') payload.day_of_week = dayOfWeek
+      if (frequency === 'custom') payload.custom_days = customDays
+      await dashboard.assignPatientScreeningSchedule(patientId, payload)
+      toast.success('Check-in rhythm set. The patient has been notified.')
+      setEditing(false)
+      await reload()
+    } catch (err) {
+      const detail = err instanceof Object && 'detail' in err ? (err as { detail: string }).detail : null
+      toast.error(detail || 'Could not save schedule.')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const clear = async () => {
+    if (!confirm('Stop the recurring check-ins for this patient? They can set up their own any time.')) return
+    try {
+      await dashboard.deactivatePatientScreeningSchedule(patientId)
+      toast.success('Recurring check-ins stopped.')
+      await reload()
+    } catch (err) {
+      const detail = err instanceof Object && 'detail' in err ? (err as { detail: string }).detail : null
+      toast.error(detail || 'Could not stop schedule.')
+    }
+  }
+
+  return (
+    <Section icon={Calendar} title="Recurring Check-ins">
+      {!editing && schedule && (
+        <>
+          <DataRow label="Frequency" value={FREQ_LABEL[schedule.frequency] || schedule.frequency} />
+          {schedule.day_of_week !== null && schedule.day_of_week !== undefined && (
+            <DataRow label="Day" value={DAY_LABEL[schedule.day_of_week]} />
+          )}
+          {schedule.custom_days && (
+            <DataRow label="Interval" value={`Every ${schedule.custom_days} days`} />
+          )}
+          {schedule.preferred_time && <DataRow label="Preferred time" value={schedule.preferred_time} />}
+          {schedule.next_due_at && <DataRow label="Next due" value={formatDate(schedule.next_due_at)} />}
+          {schedule.last_completed_at && <DataRow label="Last completed" value={formatDate(schedule.last_completed_at)} />}
+          {schedule.assigned_by_name && (
+            <DataRow label="Assigned by" value={schedule.assigned_by_name} />
+          )}
+          <div className="flex items-center gap-3 mt-3">
+            <button onClick={startEdit} className="text-xs font-body text-primary hover:underline flex items-center gap-1">
+              <Pencil className="w-3.5 h-3.5" /> Update rhythm
+            </button>
+            <button onClick={clear} className="text-xs font-body text-muted-foreground hover:text-rose-600 transition-colors">
+              Stop recurring check-ins
+            </button>
+          </div>
+        </>
+      )}
+
+      {!editing && !schedule && (
+        <>
+          <p className="text-sm text-muted-foreground font-body italic mb-3">
+            No recurring rhythm yet. Suggesting one gives the patient a gentle, predictable cadence to come back to.
+          </p>
+          <button onClick={startEdit} className="text-xs font-body text-primary hover:underline flex items-center gap-1">
+            <Plus className="w-3.5 h-3.5" /> Set a check-in rhythm
+          </button>
+        </>
+      )}
+
+      {editing && (
+        <div className="border border-border rounded-lg p-3 bg-background/60 mt-1">
+          <div className="flex items-center justify-between mb-3">
+            <h4 className="text-xs font-body font-medium text-foreground uppercase tracking-wider">
+              {schedule ? 'Update rhythm' : 'Set a rhythm'}
+            </h4>
+            <button
+              onClick={() => setEditing(false)}
+              className="p-1 rounded-md text-muted-foreground hover:text-foreground"
+              aria-label="Cancel"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <label className="col-span-2 block">
+              <span className="text-[11px] text-muted-foreground font-body uppercase tracking-wider">Frequency</span>
+              <select
+                value={frequency}
+                onChange={e => setFrequency(e.target.value)}
+                className="mt-1 w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm font-body focus:outline-none focus:ring-2 focus:ring-primary/30"
+              >
+                {FREQUENCY_CHOICES.map(f => (
+                  <option key={f.value} value={f.value}>{f.label}</option>
+                ))}
+              </select>
+            </label>
+            {(frequency === 'weekly' || frequency === 'biweekly') && (
+              <label className="block">
+                <span className="text-[11px] text-muted-foreground font-body uppercase tracking-wider">Day of week</span>
+                <select
+                  value={dayOfWeek}
+                  onChange={e => setDayOfWeek(Number(e.target.value))}
+                  className="mt-1 w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm font-body focus:outline-none focus:ring-2 focus:ring-primary/30"
+                >
+                  {DAY_CHOICES.map(d => (
+                    <option key={d.value} value={d.value}>{d.label}</option>
+                  ))}
+                </select>
+              </label>
+            )}
+            {frequency === 'custom' && (
+              <label className="block">
+                <span className="text-[11px] text-muted-foreground font-body uppercase tracking-wider">Every N days</span>
+                <input
+                  type="number"
+                  min={1}
+                  max={365}
+                  value={customDays}
+                  onChange={e => setCustomDays(Number(e.target.value))}
+                  className="mt-1 w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm font-body focus:outline-none focus:ring-2 focus:ring-primary/30"
+                />
+              </label>
+            )}
+            <label className="block">
+              <span className="text-[11px] text-muted-foreground font-body uppercase tracking-wider">Preferred time</span>
+              <input
+                type="time"
+                value={preferredTime}
+                onChange={e => setPreferredTime(e.target.value)}
+                className="mt-1 w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm font-body focus:outline-none focus:ring-2 focus:ring-primary/30"
+              />
+            </label>
+          </div>
+          <div className="flex items-center justify-end gap-2 mt-3">
+            <button onClick={() => setEditing(false)} className="text-xs font-body text-muted-foreground hover:text-foreground">
+              Cancel
+            </button>
+            <button
+              onClick={submit}
+              disabled={submitting}
+              className="text-xs font-body bg-primary text-primary-foreground px-3 py-1.5 rounded-md hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {submitting ? 'Saving...' : schedule ? 'Update rhythm' : 'Set rhythm'}
+            </button>
+          </div>
+        </div>
+      )}
+    </Section>
+  )
+}
+
+// ── Messages Tab — clinician-to-patient direct thread ───────────────────────
+
+function MessagesTab({ patientId }: { patientId: string }) {
+  const [thread, setThread] = useState<import('../types/api').DirectMessageThread | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [input, setInput] = useState('')
+  const [sending, setSending] = useState(false)
+  const scrollRef = useRef<HTMLDivElement>(null)
+
+  const load = () => {
+    setLoading(true)
+    dashboard.getPatientMessages(patientId)
+      .then(setThread)
+      .catch(err => {
+        const detail = err instanceof Object && 'detail' in err ? (err as { detail: string }).detail : null
+        toast.error(detail || 'Could not load messages.')
+      })
+      .finally(() => setLoading(false))
+  }
+
+  useEffect(() => {
+    load()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [patientId])
+
+  useEffect(() => {
+    if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight
+  }, [thread?.messages.length])
+
+  const send = async () => {
+    const content = input.trim()
+    if (!content || sending) return
+    setSending(true)
+    try {
+      const msg = await dashboard.sendPatientMessage(patientId, content)
+      setThread(prev => prev ? { ...prev, messages: [...prev.messages, msg] } : prev)
+      setInput('')
+    } catch (err) {
+      const detail = err instanceof Object && 'detail' in err ? (err as { detail: string }).detail : null
+      toast.error(detail || 'Could not send message.')
+    } finally {
+      setSending(false)
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-16">
+        <BreathingCircle size="sm" label="Loading messages..." />
+      </div>
+    )
+  }
+
+  if (!thread) return null
+
+  return (
+    <div className="max-w-3xl">
+      <div className="card-warm p-3 mb-3">
+        <p className="text-xs font-body text-muted-foreground">
+          Direct thread with <span className="text-foreground font-medium">{thread.patient_name}</span>.
+          Private messaging — not the AI assistant. The patient sees these under their Messages page.
+        </p>
+      </div>
+
+      <div
+        ref={scrollRef}
+        className="card-warm p-4 h-[55vh] overflow-y-auto mb-3 space-y-3"
+      >
+        {thread.messages.length === 0 ? (
+          <div className="flex items-center justify-center h-full">
+            <p className="text-sm text-muted-foreground font-body italic text-center max-w-xs">
+              No messages yet. A short note — checking in, following up on a screening, or scheduling — can go a long way.
+            </p>
+          </div>
+        ) : (
+          thread.messages.map(m => <MessagesTabBubble key={m.id} message={m} isClinician={m.role === 'clinician'} patientName={thread.patient_name} clinicianName={thread.clinician_name || ''} />)
+        )}
+      </div>
+
+      <div className="card-warm p-3">
+        <div className="flex items-end gap-2">
+          <textarea
+            value={input}
+            onChange={e => setInput(e.target.value)}
+            onKeyDown={e => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault()
+                send()
+              }
+            }}
+            placeholder="Write a message to the patient..."
+            rows={2}
+            className="flex-1 resize-none bg-transparent px-2 py-1.5 text-sm font-body focus:outline-none"
+            disabled={sending}
+          />
+          <button
+            onClick={send}
+            disabled={!input.trim() || sending}
+            className="text-xs font-body bg-primary text-primary-foreground px-4 py-2 rounded-md hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          >
+            {sending ? 'Sending...' : 'Send'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function MessagesTabBubble({
+  message,
+  isClinician,
+  patientName,
+  clinicianName,
+}: {
+  message: import('../types/api').DirectMessageResponse
+  isClinician: boolean
+  patientName: string
+  clinicianName: string
+}) {
+  const senderName = isClinician ? clinicianName : patientName
+  return (
+    <div className={`flex ${isClinician ? 'justify-end' : 'justify-start'}`}>
+      <div className={`max-w-[75%] rounded-2xl px-3.5 py-2 ${
+        isClinician ? 'bg-primary/10 text-foreground' : 'bg-muted text-foreground'
+      }`}>
+        <p className="text-[10px] font-body text-muted-foreground mb-0.5 uppercase tracking-wider">
+          {senderName}
+        </p>
+        <p className="text-sm font-body whitespace-pre-wrap leading-relaxed">{message.content}</p>
+        <p className="text-[10px] text-muted-foreground/70 font-body mt-1">
+          {new Date(message.created_at).toLocaleString('en-GB', {
+            day: '2-digit', month: '2-digit', year: 'numeric',
+            hour: '2-digit', minute: '2-digit',
+          })}
+        </p>
+      </div>
     </div>
   )
 }

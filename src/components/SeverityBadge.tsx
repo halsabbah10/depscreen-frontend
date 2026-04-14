@@ -7,12 +7,15 @@ interface SeverityBadgeProps {
   explanation?: string
 }
 
-/** Warm severity label for editorial report header. */
+/** Warm severity label for editorial report header.
+ *  Color choices are deliberately muted — no alarm-red bar at the top of a
+ *  result page, because the patient may already feel fragile. Red stays on
+ *  the fraction numeral (information-carrying) but not on the progress bar. */
 const SEVERITY_META: Record<string, { label: string; tone: string; color: string; barColor: string }> = {
-  none:     { label: 'No indicators detected', tone: 'A reassuring sign', color: 'text-slate-600', barColor: 'bg-slate-300' },
-  mild:     { label: 'Mild indicators', tone: 'Worth keeping an eye on', color: 'text-sky-700', barColor: 'bg-sky-400' },
-  moderate: { label: 'Moderate indicators', tone: 'Professional guidance may help', color: 'text-amber-700', barColor: 'bg-amber-400' },
-  severe:   { label: 'Significant indicators', tone: 'Speaking with a professional is strongly encouraged', color: 'text-red-700', barColor: 'bg-red-400' },
+  none:     { label: 'A quiet result', tone: 'Nothing clear came up this time — thank you for checking in.', color: 'text-slate-600', barColor: 'bg-slate-300' },
+  mild:     { label: 'A few small signals', tone: 'Small signals worth gently noticing.', color: 'text-sky-700', barColor: 'bg-sky-400' },
+  moderate: { label: 'Several patterns noticed', tone: 'Talking with someone might lighten the load.', color: 'text-amber-700', barColor: 'bg-amber-400' },
+  severe:   { label: 'Many patterns showed up', tone: "This is a moment to let someone hold it with you — a clinician, a trusted person, or Shamsaha (17651421). You don't have to carry this alone.", color: 'text-red-700', barColor: 'bg-amber-500/70' },
 }
 
 export function SeverityBadge({ level, criteriaCount, totalCriteria = 9, explanation }: SeverityBadgeProps) {
@@ -58,7 +61,7 @@ export function SeverityBadge({ level, criteriaCount, totalCriteria = 9, explana
           />
         </div>
         <p className="text-xs text-muted-foreground/60 mt-2">
-          {criteriaCount} of {totalCriteria} DSM-5 criteria observed
+          {criteriaCount} of {totalCriteria} patterns noticed
         </p>
       </div>
 
@@ -66,6 +69,16 @@ export function SeverityBadge({ level, criteriaCount, totalCriteria = 9, explana
       {explanation && (
         <p className="text-sm text-muted-foreground leading-relaxed mt-4 max-w-md mx-auto font-body">
           {explanation}
+        </p>
+      )}
+
+      {/* Holding context — especially important for moderate/severe results so
+          the patient doesn't read the number as a verdict. */}
+      {(level === 'moderate' || level === 'severe') && (
+        <p className="text-xs text-muted-foreground/80 italic leading-relaxed mt-5 max-w-md mx-auto font-body">
+          This is a screening signal, not a verdict. Many people see numbers
+          like these on hard days — what matters now is letting someone hold
+          this with you.
         </p>
       )}
     </motion.div>

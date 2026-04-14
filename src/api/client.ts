@@ -21,6 +21,7 @@ import type {
   NotificationResponse,
   CarePlanCreate, CarePlanResponse,
   ProfileUpdate, OnboardingProgress,
+  DirectMessageResponse, DirectMessageThread,
 } from '../types/api'
 
 const API_BASE = '/api'
@@ -435,6 +436,45 @@ export const dashboard = {
     return put(`/dashboard/diagnoses/${id}`, data)
   },
 
+  // Medications (clinician-side)
+  async getPatientMedications(patientId: string): Promise<MedicationResponse[]> {
+    return get<MedicationResponse[]>(`/dashboard/patients/${patientId}/medications`)
+  },
+
+  async addPatientMedication(patientId: string, data: MedicationCreate): Promise<MedicationResponse> {
+    return post<MedicationResponse>(`/dashboard/patients/${patientId}/medications`, data)
+  },
+
+  async updatePatientMedication(medicationId: string, data: MedicationCreate): Promise<MedicationResponse> {
+    return put<MedicationResponse>(`/dashboard/medications/${medicationId}`, data)
+  },
+
+  async deactivatePatientMedication(medicationId: string): Promise<void> {
+    return del(`/dashboard/medications/${medicationId}`)
+  },
+
+  // Screening schedule (clinician-side)
+  async getPatientScreeningSchedule(patientId: string): Promise<ScreeningScheduleResponse | null> {
+    return get<ScreeningScheduleResponse | null>(`/dashboard/patients/${patientId}/screening-schedule`)
+  },
+
+  async assignPatientScreeningSchedule(patientId: string, data: ScreeningScheduleCreate): Promise<ScreeningScheduleResponse> {
+    return post<ScreeningScheduleResponse>(`/dashboard/patients/${patientId}/screening-schedule`, data)
+  },
+
+  async deactivatePatientScreeningSchedule(patientId: string): Promise<void> {
+    return del(`/dashboard/patients/${patientId}/screening-schedule`)
+  },
+
+  // Direct messaging (clinician side)
+  async getPatientMessages(patientId: string): Promise<DirectMessageThread> {
+    return get<DirectMessageThread>(`/dashboard/patients/${patientId}/messages`)
+  },
+
+  async sendPatientMessage(patientId: string, content: string): Promise<DirectMessageResponse> {
+    return post<DirectMessageResponse>(`/dashboard/patients/${patientId}/messages`, { content })
+  },
+
   // Notifications
   async notifyPatient(patientId: string, data: { title: string; message: string; notification_type: string; link?: string }): Promise<void> {
     return post(`/dashboard/patients/${patientId}/notify`, data)
@@ -510,6 +550,15 @@ export const patient = {
 
   async markAllNotificationsRead(): Promise<void> {
     return post('/patient/notifications/read-all')
+  },
+
+  // Clinician direct messages
+  async getClinicianMessages(): Promise<DirectMessageThread | null> {
+    return get<DirectMessageThread | null>('/patient/clinician-messages')
+  },
+
+  async sendMessageToClinician(content: string): Promise<DirectMessageResponse> {
+    return post<DirectMessageResponse>('/patient/clinician-messages', { content })
   },
 
   // Medications

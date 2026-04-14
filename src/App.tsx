@@ -30,6 +30,7 @@ import { ProfilePage } from './pages/ProfilePage'
 import { MyAppointmentsPage } from './pages/MyAppointmentsPage'
 import { MyCarePlanPage } from './pages/MyCarePlanPage'
 import { AppointmentsPage } from './pages/AppointmentsPage'
+import { MessagesPage } from './pages/MessagesPage'
 
 function AppRoutes() {
   const { isAuthenticated, isPatient, user } = useAuth()
@@ -73,13 +74,16 @@ function AppRoutes() {
           <ProtectedRoute roles={['patient']}><ChatPage /></ProtectedRoute>
         } />
         <Route path="/notifications" element={
-          <ProtectedRoute roles={['patient']}><NotificationsPage /></ProtectedRoute>
+          <ProtectedRoute roles={['patient', 'clinician']}><NotificationsPage /></ProtectedRoute>
         } />
         <Route path="/appointments" element={
           <ProtectedRoute roles={['patient']}><MyAppointmentsPage /></ProtectedRoute>
         } />
         <Route path="/care-plan" element={
           <ProtectedRoute roles={['patient']}><MyCarePlanPage /></ProtectedRoute>
+        } />
+        <Route path="/messages" element={
+          <ProtectedRoute roles={['patient']}><MessagesPage /></ProtectedRoute>
         } />
 
         {/* Clinician */}

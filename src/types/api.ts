@@ -333,6 +333,8 @@ export interface ScreeningScheduleResponse {
   next_due_at: string | null
   last_completed_at: string | null
   is_active: boolean
+  assigned_by?: string | null
+  assigned_by_name?: string | null
   created_at: string
 }
 
@@ -560,3 +562,27 @@ export const DSM5_CRITERIA = [
   'PSYCHOMOTOR', 'FATIGUE', 'WORTHLESSNESS', 'COGNITIVE_ISSUES',
   'SUICIDAL_THOUGHTS',
 ] as const
+
+// ── Direct messaging (patient ↔ clinician) ──────────────────────────────────
+
+export interface DirectMessageCreate {
+  content: string
+}
+
+export interface DirectMessageResponse {
+  id: string
+  role: string
+  sender_name: string | null
+  content: string
+  created_at: string
+}
+
+export interface DirectMessageThread {
+  conversation_id: string
+  patient_id: string
+  patient_name: string
+  clinician_id: string | null
+  clinician_name: string | null
+  messages: DirectMessageResponse[]
+  unread_count: number
+}

@@ -11,7 +11,7 @@ import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
 import {
   Brain, ClipboardList, BarChart3, Users, LayoutDashboard,
-  User, LogOut, AlertTriangle, Bell, MessageCircle, Calendar, ClipboardCheck,
+  User, LogOut, Bell, MessageCircle, Mail, Calendar, ClipboardCheck,
 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { ErrorBoundary } from './ui/ErrorBoundary'
@@ -21,6 +21,7 @@ const PATIENT_NAV = [
   { path: '/history', label: 'History', icon: BarChart3 },
   { path: '/appointments', label: 'Appointments', icon: Calendar },
   { path: '/care-plan', label: 'Care Plan', icon: ClipboardCheck },
+  { path: '/messages', label: 'Messages', icon: Mail },
   { path: '/chat', label: 'Chat', icon: MessageCircle },
 ]
 
@@ -65,10 +66,11 @@ export function Layout() {
         }}
       />
 
-      {/* Safety banner — always visible, never dismissible */}
-      <div className="safety-banner" role="alert">
-        <AlertTriangle className="inline w-3.5 h-3.5 mr-1.5 -mt-0.5" aria-hidden="true" />
-        Screening tool only — not a diagnostic instrument. In Bahrain, call <strong>999</strong> for emergencies.
+      {/* Quiet presence-of-support banner — always visible but not alarming.
+          Avoids the alert icon and "alert" role so it doesn't read as an
+          active warning to a patient on every page load. */}
+      <div className="safety-banner">
+        A supportive companion — not a diagnosis. Support any time: <strong>999</strong> or Shamsaha <strong>17651421</strong>.
       </div>
 
       {/* Header */}
@@ -114,7 +116,7 @@ export function Layout() {
 
             {/* Notifications bell */}
             <Link
-              to={isPatient ? '/notifications' : '/dashboard'}
+              to="/notifications"
               className="p-1.5 rounded-md text-white/60 hover:text-white hover:bg-white/10 transition-colors relative"
               aria-label="Notifications"
             >

@@ -459,7 +459,7 @@ export function ProfilePage() {
                       <FileText className="w-4 h-4 text-primary" /> Diagnoses
                     </h3>
                     {diagnoses.length === 0 ? (
-                      <p className="text-sm text-muted-foreground font-body">No diagnoses on record. Your clinician can add these.</p>
+                      <p className="text-sm text-muted-foreground font-body">Nothing logged here yet. If you have a diagnosis, your clinician can add it when you're ready.</p>
                     ) : (
                       <div className="space-y-2">
                         {diagnoses.map(d => (
@@ -494,7 +494,7 @@ export function ProfilePage() {
               </p>
 
               {contacts.length === 0 ? (
-                <p className="text-sm text-muted-foreground font-body mb-4">No emergency contacts yet. Adding at least one is recommended.</p>
+                <p className="text-sm text-muted-foreground font-body mb-4">If you'd like, adding one person you trust means we know who to reach when things feel hard.</p>
               ) : (
                 <div className="space-y-2 mb-4">
                   {contacts.map(c => (
@@ -573,28 +573,29 @@ export function ProfilePage() {
                     </button>
                   </div>
 
-                  <div className="card p-5 border-destructive/20">
-                    <h3 className="font-display text-lg text-destructive mb-2 flex items-center gap-2">
-                      <AlertTriangle className="w-4 h-4" /> Danger Zone
+                  <div className="card p-5 border-muted-foreground/20">
+                    <h3 className="font-display text-lg text-foreground mb-2 flex items-center gap-2">
+                      <AlertTriangle className="w-4 h-4 text-muted-foreground" /> Pausing your account
                     </h3>
                     <p className="text-sm text-muted-foreground font-body mb-3">
-                      Deactivating your account will prevent future logins. Your data will be preserved for your clinician's records.
+                      If you need space, you can pause your account. Your clinician still has your records,
+                      and you can come back whenever you're ready.
                     </p>
                     <button
                       onClick={async () => {
-                        if (!confirm('Are you sure you want to deactivate your account? This action cannot be easily undone.')) return
+                        if (!confirm("Would you like to pause your account? You can come back whenever you want — your data stays safe.")) return
                         try {
                           await patientApi.deactivateAccount()
-                          toast.success('Account deactivated.')
+                          toast.success('Account paused. Take care of yourself.')
                           logout()
                         } catch (err: unknown) {
                           const detail = err instanceof Object && 'detail' in err ? (err as { detail: string }).detail : null
-                          toast.error(detail || 'Could not deactivate account. Please try again.')
+                          toast.error(detail || 'Could not pause your account. Please try again.')
                         }
                       }}
-                      className="btn-destructive w-full"
+                      className="btn-outline w-full"
                     >
-                      Deactivate Account
+                      Pause my account
                     </button>
                   </div>
                 </>

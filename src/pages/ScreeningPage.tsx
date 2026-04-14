@@ -19,6 +19,22 @@ import { Skeleton } from '../components/ui/Skeleton'
 type View = 'select' | 'checkin' | 'social' | 'bulk'
 type SocialPlatform = 'reddit' | 'x'
 
+// ── Patient-friendly criterion labels ───────────────────────────────────────
+// Clinical DSM-5 codes (SUICIDAL_THOUGHTS, ANHEDONIA, etc.) are kept internal.
+// The patient sees soft topical words that don't alarm or clinicalize the
+// moment of answering. First letter capitalized for consistency.
+const CRITERION_LABELS: Record<string, string> = {
+  DEPRESSED_MOOD: 'Mood',
+  ANHEDONIA: 'What brings you joy',
+  APPETITE_CHANGE: 'Appetite',
+  SLEEP_ISSUES: 'Sleep',
+  PSYCHOMOTOR: 'Body',
+  FATIGUE: 'Energy',
+  WORTHLESSNESS: 'How you see yourself',
+  COGNITIVE_ISSUES: 'Focus',
+  SUICIDAL_THOUGHTS: 'Safety',
+}
+
 // ── Motion presets ──────────────────────────────────────────────────────────
 
 
@@ -89,7 +105,7 @@ export function ScreeningPage() {
 
   const handleSubmitCheckin = async () => {
     if (answeredCount < 3) {
-      toast.error('Please answer at least 3 questions for a meaningful screening.')
+      toast.error('A few more answers will help this be more meaningful — 3 is a good starting point.')
       return
     }
     setLoading(true)
@@ -130,7 +146,7 @@ export function ScreeningPage() {
 
   const handleSubmitBulk = async () => {
     if (bulkContent.trim().length < 50) {
-      toast.error('Please share a bit more text so we can provide an accurate screening.')
+      toast.error('A little more writing helps us understand better. Share whatever feels right.')
       return
     }
     setLoading(true)
@@ -352,9 +368,9 @@ export function ScreeningPage() {
               {...questionTransition}
               className="card-warm p-6 md:p-8 mb-6"
             >
-              {/* DSM-5 criterion subtle label */}
+              {/* Patient-friendly topic label — clinical codes are kept internal */}
               <p className="text-[11px] uppercase tracking-wider text-muted-foreground/50 font-body mb-4">
-                {prompt.dsm5_criterion.replace(/_/g, ' ')}
+                {CRITERION_LABELS[prompt.dsm5_criterion] || prompt.dsm5_criterion.replace(/_/g, ' ').toLowerCase()}
               </p>
 
               {/* Large serif question */}

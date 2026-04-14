@@ -8,7 +8,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Bell, Check, CheckCheck, ClipboardList, Calendar, MessageCircle, AlertTriangle } from 'lucide-react'
+import { Bell, Check, CheckCheck, ClipboardList, Calendar, MessageCircle, AlertTriangle, Clock } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { patient as patientApi } from '../api/client'
 import type { NotificationResponse } from '../types/api'
@@ -19,20 +19,26 @@ import { EmptyState } from '../components/ui/EmptyState'
 
 const NOTIFICATION_ICONS: Record<string, typeof Bell> = {
   screening_due: ClipboardList,
-  screening_missed: AlertTriangle,
+  screening_missed: Clock,
+  screening_overdue: Clock,
   new_message: MessageCircle,
   appointment_reminder: Calendar,
+  appointment_scheduled: Calendar,
   care_plan_updated: ClipboardList,
+  care_plan_review: ClipboardList,
   crisis_alert: AlertTriangle,
   document_uploaded: ClipboardList,
 }
 
 const NOTIFICATION_COLORS: Record<string, string> = {
   screening_due: 'bg-sky-50 text-sky-600',
-  screening_missed: 'bg-amber-50 text-amber-600',
+  screening_missed: 'bg-slate-50 text-slate-600',
+  screening_overdue: 'bg-slate-50 text-slate-600',
   new_message: 'bg-primary/10 text-primary',
   appointment_reminder: 'bg-purple-50 text-purple-600',
+  appointment_scheduled: 'bg-purple-50 text-purple-600',
   care_plan_updated: 'bg-emerald-50 text-emerald-600',
+  care_plan_review: 'bg-amber-50 text-amber-700',
   crisis_alert: 'bg-red-50 text-red-600',
   document_uploaded: 'bg-slate-50 text-slate-600',
 }
