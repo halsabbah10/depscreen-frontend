@@ -6,8 +6,9 @@ import {
   Phone, Pill, Activity, Heart, Calendar, Pencil, Trash2, X,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
-import { dashboard } from '../api/client'
-import type { PatientSummary, ScreeningHistoryResponse, SymptomTrend, PatientDocument, CarePlanResponse, PatientFullProfile, MedicationResponse, MedicationCreate, ScreeningScheduleResponse, ScreeningScheduleCreate } from '../types/api'
+import { dashboard, terminology } from '../api/client'
+import type { PatientSummary, ScreeningHistoryResponse, SymptomTrend, PatientDocument, CarePlanResponse, PatientFullProfile, MedicationResponse, MedicationCreate, ScreeningScheduleResponse, ScreeningScheduleCreate, DiagnosisResponse, DiagnosisCreate } from '../types/api'
+import { Autocomplete } from '../components/ui/Autocomplete'
 import { SEVERITY_COLORS, SYMPTOM_COLORS } from '../types/api'
 import { formatDate } from '../lib/localization'
 import { PageTransition, StaggerChildren, StaggerItem } from '../components/ui/PageTransition'
@@ -887,35 +888,8 @@ function ProfileTab({ patientId }: { patientId: string }) {
         )}
       </Section>
 
-      <Section icon={Heart} title={`Diagnoses (${profile.diagnoses.length})`}>
-        {profile.diagnoses.length === 0 ? (
-          <p className="text-sm text-muted-foreground font-body italic">No diagnoses on record.</p>
-        ) : (
-          <div className="space-y-2">
-            {profile.diagnoses.map(dx => (
-              <div key={dx.id} className="py-2 border-b border-border last:border-0">
-                <div className="flex items-center gap-2">
-                  <span className="font-body font-medium text-sm text-foreground">{dx.condition}</span>
-                  {dx.icd10_code && (
-                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-muted text-muted-foreground">
-                      {dx.icd10_code}
-                    </span>
-                  )}
-                  {dx.status && (
-                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-primary/10 text-primary">{dx.status}</span>
-                  )}
-                </div>
-                {(dx.diagnosed_by || dx.diagnosed_date) && (
-                  <p className="text-[11px] text-muted-foreground font-body mt-0.5">
-                    {dx.diagnosed_date && `Diagnosed ${formatDate(dx.diagnosed_date)}`}
-                    {dx.diagnosed_by && ` · By ${dx.diagnosed_by}`}
-                  </p>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-      </Section>
+      <DiagnosesSection patientId={patientId} />
+
 
       <Section icon={Phone} title={`Emergency Contacts (${profile.emergency_contacts.length})`}>
         {profile.emergency_contacts.length === 0 ? (
@@ -1139,13 +1113,15 @@ function MedicationsSection({ patientId }: { patientId: string }) {
           <div className="grid grid-cols-2 gap-3">
             <label className="col-span-2 block">
               <span className="text-[11px] text-muted-foreground font-body uppercase tracking-wider">Name *</span>
-              <input
-                type="text"
-                value={form.name}
-                onChange={e => setForm({ ...form, name: e.target.value })}
-                className="mt-1 w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm font-body focus:outline-none focus:ring-2 focus:ring-primary/30"
-                placeholder="e.g., Sertraline"
-              />
+              <div className="mt-1">
+                <Autocomplete
+                  value={form.name}
+                  onChange={v => setForm({ ...form, name: v })}
+                  fetcher={terminology.rxnorm}
+                  placeholder="Start typing a drug name (e.g., Sertraline)"
+                  aria-label="Medication name"
+                />
+              </div>
             </label>
             <label className="block">
               <span className="text-[11px] text-muted-foreground font-body uppercase tracking-wider">Dosage</span>
@@ -1582,5 +1558,263 @@ function MessagesTabBubble({
         </p>
       </div>
     </div>
+  )
+}
+
+// ── Diagnoses Section — editable for clinicians, ICD-10 autocomplete ────────
+
+const DX_STATUS_OPTIONS = [
+  { value: 'active', label: 'Active' },
+  { value: 'remission', label: 'In remission' },
+  { value: 'resolved', label: 'Resolved' },
+]
+
+function emptyDxForm(): DiagnosisCreate {
+  return {
+    condition: '',
+    icd10_code: '',
+    diagnosed_date: '',
+    status: 'active',
+    diagnosed_by: '',
+    notes: '',
+  }
+}
+
+function DiagnosesSection({ patientId }: { patientId: string }) {
+  const [diagnoses, setDiagnoses] = useState<DiagnosisResponse[]>([])
+  const [adding, setAdding] = useState(false)
+  const [form, setForm] = useState<DiagnosisCreate>(emptyDxForm())
+  const [submitting, setSubmitting] = useState(false)
+
+  const reload = async () => {
+    try {
+      const fresh = await dashboard.getPatientDiagnoses(patientId)
+      setDiagnoses(fresh)
+    } catch {
+      toast.error('Could not refresh diagnoses.')
+    }
+  }
+
+  useEffect(() => {
+    reload()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [patientId])
+
+  const startAdd = () => {
+    setForm(emptyDxForm())
+    setAdding(true)
+  }
+
+  const cancel = () => {
+    setAdding(false)
+    setForm(emptyDxForm())
+  }
+
+  const submit = async () => {
+    if (!form.condition.trim()) {
+      toast.error('Condition is required.')
+      return
+    }
+    setSubmitting(true)
+    try {
+      const payload: DiagnosisCreate = {
+        condition: form.condition.trim(),
+        icd10_code: form.icd10_code?.trim() || undefined,
+        diagnosed_date: form.diagnosed_date || undefined,
+        status: form.status || 'active',
+        diagnosed_by: form.diagnosed_by?.trim() || undefined,
+        notes: form.notes?.trim() || undefined,
+      }
+      await dashboard.addPatientDiagnosis(patientId, payload)
+      toast.success('Diagnosis added.')
+      cancel()
+      await reload()
+    } catch (err) {
+      const detail = err instanceof Object && 'detail' in err ? (err as { detail: string }).detail : null
+      toast.error(detail || 'Could not save diagnosis.')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const updateStatus = async (dx: DiagnosisResponse, status: string) => {
+    try {
+      await dashboard.updateDiagnosis(dx.id, { status })
+      toast.success('Status updated.')
+      await reload()
+    } catch {
+      toast.error('Could not update diagnosis.')
+    }
+  }
+
+  const remove = async (dx: DiagnosisResponse) => {
+    if (!confirm(`Remove the diagnosis "${dx.condition}" from this patient's record?`)) return
+    try {
+      await dashboard.deletePatientDiagnosis(dx.id)
+      toast.success('Diagnosis removed.')
+      await reload()
+    } catch {
+      toast.error('Could not remove diagnosis.')
+    }
+  }
+
+  // When the clinician picks an ICD-10 suggestion, populate both fields.
+  // NLM label is "code — name" with em-dashes; value is the code.
+  const handleIcd10Pick = (s: { value: string; label: string }) => {
+    const parts = s.label.split(/\s[—-]\s/)
+    const name = parts.length > 1 ? parts.slice(1).join(' — ').trim() : s.label
+    setForm(f => ({ ...f, icd10_code: s.value, condition: name }))
+  }
+
+  return (
+    <Section icon={Heart} title={`Diagnoses (${diagnoses.length})`}>
+      {diagnoses.length === 0 && !adding ? (
+        <p className="text-sm text-muted-foreground font-body italic mb-3">No diagnoses on record.</p>
+      ) : (
+        <div className="space-y-2 mb-3">
+          {diagnoses.map(dx => (
+            <div key={dx.id} className="flex items-start gap-3 py-2 border-b border-border last:border-0">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="font-body font-medium text-sm text-foreground">{dx.condition}</span>
+                  {dx.icd10_code && (
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-muted text-muted-foreground">
+                      {dx.icd10_code}
+                    </span>
+                  )}
+                  <select
+                    value={dx.status}
+                    onChange={e => updateStatus(dx, e.target.value)}
+                    className="text-[10px] px-2 py-0.5 rounded-full bg-primary/10 text-primary border-0 focus:outline-none focus:ring-1 focus:ring-primary/40"
+                    aria-label="Diagnosis status"
+                  >
+                    {DX_STATUS_OPTIONS.map(o => (
+                      <option key={o.value} value={o.value}>{o.label}</option>
+                    ))}
+                  </select>
+                </div>
+                {(dx.diagnosed_by || dx.diagnosed_date) && (
+                  <p className="text-[11px] text-muted-foreground font-body mt-0.5">
+                    {dx.diagnosed_date && `Diagnosed ${formatDate(dx.diagnosed_date)}`}
+                    {dx.diagnosed_by && ` · By ${dx.diagnosed_by}`}
+                  </p>
+                )}
+                {dx.notes && <p className="text-xs text-muted-foreground font-body italic mt-1">"{dx.notes}"</p>}
+              </div>
+              <button
+                onClick={() => remove(dx)}
+                className="p-1.5 rounded-md text-muted-foreground hover:text-rose-600 hover:bg-rose-50 transition-colors shrink-0"
+                title="Remove"
+                aria-label="Remove diagnosis"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {!adding && (
+        <button onClick={startAdd} className="text-xs font-body text-primary hover:underline flex items-center gap-1">
+          <Plus className="w-3.5 h-3.5" /> Add diagnosis
+        </button>
+      )}
+
+      {adding && (
+        <div className="border border-border rounded-lg p-3 bg-background/60 mt-2">
+          <div className="flex items-center justify-between mb-3">
+            <h4 className="text-xs font-body font-medium text-foreground uppercase tracking-wider">Add diagnosis</h4>
+            <button
+              onClick={cancel}
+              className="p-1 rounded-md text-muted-foreground hover:text-foreground"
+              aria-label="Cancel"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <label className="col-span-2 block">
+              <span className="text-[11px] text-muted-foreground font-body uppercase tracking-wider">
+                ICD-10 lookup
+              </span>
+              <p className="text-[11px] text-muted-foreground/70 font-body mb-1">
+                Start typing a condition or code. Picking a result fills both the name and code.
+              </p>
+              <Autocomplete
+                value={form.icd10_code || ''}
+                onChange={v => setForm(f => ({ ...f, icd10_code: v }))}
+                onPick={handleIcd10Pick}
+                fetcher={terminology.icd10}
+                placeholder="e.g., major depressive, F33"
+                aria-label="ICD-10 code lookup"
+              />
+            </label>
+            <label className="col-span-2 block">
+              <span className="text-[11px] text-muted-foreground font-body uppercase tracking-wider">Condition *</span>
+              <input
+                type="text"
+                value={form.condition}
+                onChange={e => setForm({ ...form, condition: e.target.value })}
+                className="mt-1 w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm font-body focus:outline-none focus:ring-2 focus:ring-primary/30"
+                placeholder="e.g., Major depressive disorder, recurrent"
+              />
+            </label>
+            <label className="block">
+              <span className="text-[11px] text-muted-foreground font-body uppercase tracking-wider">Diagnosed on</span>
+              <input
+                type="date"
+                value={form.diagnosed_date || ''}
+                onChange={e => setForm({ ...form, diagnosed_date: e.target.value })}
+                className="mt-1 w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm font-body focus:outline-none focus:ring-2 focus:ring-primary/30"
+              />
+            </label>
+            <label className="block">
+              <span className="text-[11px] text-muted-foreground font-body uppercase tracking-wider">Status</span>
+              <select
+                value={form.status || 'active'}
+                onChange={e => setForm({ ...form, status: e.target.value })}
+                className="mt-1 w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm font-body focus:outline-none focus:ring-2 focus:ring-primary/30"
+              >
+                {DX_STATUS_OPTIONS.map(o => (
+                  <option key={o.value} value={o.value}>{o.label}</option>
+                ))}
+              </select>
+            </label>
+            <label className="col-span-2 block">
+              <span className="text-[11px] text-muted-foreground font-body uppercase tracking-wider">Diagnosed by</span>
+              <input
+                type="text"
+                value={form.diagnosed_by || ''}
+                onChange={e => setForm({ ...form, diagnosed_by: e.target.value })}
+                className="mt-1 w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm font-body focus:outline-none focus:ring-2 focus:ring-primary/30"
+                placeholder="Defaults to your name"
+              />
+            </label>
+            <label className="col-span-2 block">
+              <span className="text-[11px] text-muted-foreground font-body uppercase tracking-wider">Notes</span>
+              <textarea
+                value={form.notes || ''}
+                onChange={e => setForm({ ...form, notes: e.target.value })}
+                rows={2}
+                className="mt-1 w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm font-body focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
+                placeholder="Clinical context, onset, severity notes..."
+              />
+            </label>
+          </div>
+          <div className="flex items-center justify-end gap-2 mt-3">
+            <button onClick={cancel} className="text-xs font-body text-muted-foreground hover:text-foreground">
+              Cancel
+            </button>
+            <button
+              onClick={submit}
+              disabled={submitting || !form.condition.trim()}
+              className="text-xs font-body bg-primary text-primary-foreground px-3 py-1.5 rounded-md hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {submitting ? 'Saving...' : 'Add diagnosis'}
+            </button>
+          </div>
+        </div>
+      )}
+    </Section>
   )
 }

@@ -105,16 +105,11 @@ export function OnboardingPage() {
     setDocUploading(true)
     try {
       for (const file of Array.from(files)) {
-        if (file.size > 2 * 1024 * 1024) {
-          toast.error(`${file.name} is larger than 2MB. Please upload a smaller file.`)
+        if (file.size > 10 * 1024 * 1024) {
+          toast.error(`${file.name} is larger than 10 MB. Please upload a smaller file.`)
           continue
         }
-        const content = await file.text()
-        if (content.length < 10) {
-          toast.error(`${file.name} appears empty.`)
-          continue
-        }
-        // Infer doc_type from filename
+
         const nameL = file.name.toLowerCase()
         let docType = 'journal_entry'
         if (nameL.includes('phq')) docType = 'phq9'
@@ -122,17 +117,31 @@ export function OnboardingPage() {
         else if (nameL.includes('med')) docType = 'medication_list'
         else if (nameL.includes('diag')) docType = 'previous_diagnosis'
 
-        await patientApi.uploadDocument(
-          file.name.replace(/\.[^/.]+$/, ''),
-          docType,
-          content.slice(0, 100000),
-        )
-        setUploadedDocs(prev => [...prev, { title: file.name, doc_type: docType }])
+        const title = file.name.replace(/\.[^/.]+$/, '')
+        const isPdf = nameL.endsWith('.pdf') || file.type === 'application/pdf'
+        const isText = nameL.endsWith('.txt') || file.type.startsWith('text/')
+
+        try {
+          if (isPdf || isText) {
+            // Server parses PDFs via pdfplumber (with OCR fallback for scans)
+            // and decodes .txt as UTF-8. Multipart upload handles both.
+            await patientApi.uploadDocumentFile(file, title, docType)
+          } else {
+            // Legacy path for other text-like content: try to read client-side
+            const content = await file.text()
+            if (content.length < 10) {
+              toast.error(`${file.name} appears empty.`)
+              continue
+            }
+            await patientApi.uploadDocument(title, docType, content.slice(0, 100000))
+          }
+          setUploadedDocs(prev => [...prev, { title: file.name, doc_type: docType }])
+        } catch (err: unknown) {
+          const detail = err instanceof Object && 'detail' in err ? (err as { detail: string }).detail : null
+          toast.error(detail || `Could not upload ${file.name}.`)
+        }
       }
-      toast.success('Documents uploaded. They will help personalize your chat.')
-    } catch (err: unknown) {
-      const errorDetail = err instanceof Object && 'detail' in err ? (err as { detail: string }).detail : null
-      toast.error(errorDetail || 'Could not upload document.')
+      toast.success('Documents saved. They will help personalize your chat.')
     } finally {
       setDocUploading(false)
       e.target.value = '' // reset input so same file can be re-selected
@@ -480,11 +489,11 @@ export function OnboardingPage() {
                   diagnoses. Your assistant will reference these to give more personalized guidance.
                 </p>
                 <div>
-                  <label className="block text-sm font-medium mb-2 font-body">Upload files (.txt, .md, .csv)</label>
+                  <label className="block text-sm font-medium mb-2 font-body">Upload files (PDF, .txt, .md, .csv)</label>
                   <input
                     type="file"
                     multiple
-                    accept=".txt,.md,.csv"
+                    accept=".pdf,.txt,.md,.csv,application/pdf,text/plain"
                     onChange={handleFileUpload}
                     disabled={docUploading}
                     className="block w-full text-sm text-muted-foreground font-body

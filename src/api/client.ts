@@ -428,12 +428,20 @@ export const dashboard = {
   },
 
   // Diagnoses
+  async getPatientDiagnoses(patientId: string): Promise<DiagnosisResponse[]> {
+    return get<DiagnosisResponse[]>(`/dashboard/patients/${patientId}/diagnoses`)
+  },
+
   async addPatientDiagnosis(patientId: string, data: DiagnosisCreate): Promise<DiagnosisResponse> {
     return post<DiagnosisResponse>(`/dashboard/patients/${patientId}/diagnoses`, data)
   },
 
   async updateDiagnosis(id: string, data: { status: string }): Promise<void> {
     return put(`/dashboard/diagnoses/${id}`, data)
+  },
+
+  async deletePatientDiagnosis(id: string): Promise<void> {
+    return del(`/dashboard/diagnoses/${id}`)
   },
 
   // Medications (clinician-side)
@@ -490,6 +498,26 @@ export const patient = {
 
   async uploadDocument(title: string, docType: string, content: string): Promise<{ status: string; document_id: string }> {
     return post('/patient/documents', { title, doc_type: docType, content })
+  },
+
+  /** Upload a PDF or .txt file directly — server parses PDF via pdfplumber
+   * (+ OCR fallback for scans) before ingesting into the RAG corpus. */
+  async uploadDocumentFile(
+    file: File,
+    title: string,
+    docType: string,
+  ): Promise<{ status: string; document_id: string; extracted_chars: number; source: string }> {
+    const form = new FormData()
+    form.append('file', file)
+    const params = new URLSearchParams({ title, doc_type: docType })
+    const headers: Record<string, string> = {}
+    if (accessToken) headers['Authorization'] = `Bearer ${accessToken}`
+    const response = await fetch(`${API_BASE}/patient/documents/upload?${params}`, {
+      method: 'POST',
+      headers,
+      body: form,
+    })
+    return handleResponse(response)
   },
 
   async getDocuments(): Promise<PatientDocument[]> {
@@ -635,6 +663,31 @@ export const patient = {
       body: formData,
     })
     return handleResponse(response)
+  },
+}
+
+// ── Terminology (RxNorm, ICD-10) ──────────────────────────────────────────────
+
+export interface TerminologySuggestion {
+  value: string
+  label: string
+}
+
+export const terminology = {
+  async rxnorm(q: string, limit = 8): Promise<TerminologySuggestion[]> {
+    if (q.trim().length < 2) return []
+    const r = await get<{ suggestions: TerminologySuggestion[] }>(
+      `/terminology/rxnorm?q=${encodeURIComponent(q)}&limit=${limit}`,
+    )
+    return r.suggestions
+  },
+
+  async icd10(q: string, limit = 8): Promise<TerminologySuggestion[]> {
+    if (q.trim().length < 2) return []
+    const r = await get<{ suggestions: TerminologySuggestion[] }>(
+      `/terminology/icd10?q=${encodeURIComponent(q)}&limit=${limit}`,
+    )
+    return r.suggestions
   },
 }
 
