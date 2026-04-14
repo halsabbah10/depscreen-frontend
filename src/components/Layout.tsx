@@ -19,7 +19,7 @@ import { ErrorBoundary } from './ui/ErrorBoundary'
 const PATIENT_NAV = [
   { path: '/screening', label: 'New Screening', icon: ClipboardList },
   { path: '/history', label: 'History', icon: BarChart3 },
-  { path: '/chat/conversations', label: 'Chat', icon: MessageCircle },
+  { path: '/chat', label: 'Chat', icon: MessageCircle },
 ]
 
 const CLINICIAN_NAV = [
@@ -150,6 +150,23 @@ export function Layout() {
           </nav>
         </div>
       </header>
+
+      {/* Complete-profile banner for patients who skipped onboarding */}
+      {isPatient && user && !user.onboarding_completed && location.pathname !== '/onboarding' && (
+        <div className="bg-clay/15 border-b border-clay/30 relative z-30">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-2.5 flex items-center justify-between gap-4">
+            <p className="text-xs text-foreground font-body">
+              <span className="font-medium">Complete your profile</span> to unlock personalized clinical context in chat and screenings.
+            </p>
+            <Link
+              to="/onboarding"
+              className="text-xs font-medium text-clay hover:text-clay/80 whitespace-nowrap transition-colors"
+            >
+              Continue onboarding →
+            </Link>
+          </div>
+        </div>
+      )}
 
       {/* Main content */}
       <main className="flex-1 relative z-10">

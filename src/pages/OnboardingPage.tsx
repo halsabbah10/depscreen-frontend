@@ -29,6 +29,8 @@ const STEPS: Step[] = [
   { id: 'contact', title: 'Contact', description: 'How to reach you' },
   { id: 'medical', title: 'Medical', description: 'Health background' },
   { id: 'emergency', title: 'Emergency Contact', description: 'Someone we can reach in a crisis' },
+  { id: 'social', title: 'Social Media', description: 'Optional — public posts help screening' },
+  { id: 'documents', title: 'Documents', description: 'Upload existing records (optional)' },
   { id: 'complete', title: 'All Set', description: 'You are ready' },
 ]
 
@@ -54,6 +56,10 @@ export function OnboardingPage() {
   const [contactName, setContactName] = useState('')
   const [contactPhone, setContactPhone] = useState('')
   const [contactRelation, setContactRelation] = useState('parent')
+  const [redditUsername, setRedditUsername] = useState('')
+  const [twitterUsername, setTwitterUsername] = useState('')
+  const [uploadedDocs, setUploadedDocs] = useState<{ title: string; doc_type: string }[]>([])
+  const [docUploading, setDocUploading] = useState(false)
 
   // Pre-fill from existing user data (resume partially completed onboarding)
   useEffect(() => {
@@ -86,13 +92,56 @@ export function OnboardingPage() {
       case 2: return phone
       case 3: return true // medical is optional
       case 4: return contactName && contactPhone
-      case 5: return true // complete
+      case 5: return true // social is optional
+      case 6: return true // documents is optional
+      case 7: return true // complete
       default: return true
     }
   }
 
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files
+    if (!files || files.length === 0) return
+
+    setDocUploading(true)
+    try {
+      for (const file of Array.from(files)) {
+        if (file.size > 2 * 1024 * 1024) {
+          toast.error(`${file.name} is larger than 2MB. Please upload a smaller file.`)
+          continue
+        }
+        const content = await file.text()
+        if (content.length < 10) {
+          toast.error(`${file.name} appears empty.`)
+          continue
+        }
+        // Infer doc_type from filename
+        const nameL = file.name.toLowerCase()
+        let docType = 'journal_entry'
+        if (nameL.includes('phq')) docType = 'phq9'
+        else if (nameL.includes('gad')) docType = 'gad7'
+        else if (nameL.includes('med')) docType = 'medication_list'
+        else if (nameL.includes('diag')) docType = 'previous_diagnosis'
+
+        await patientApi.uploadDocument(
+          file.name.replace(/\.[^/.]+$/, ''),
+          docType,
+          content.slice(0, 100000),
+        )
+        setUploadedDocs(prev => [...prev, { title: file.name, doc_type: docType }])
+      }
+      toast.success('Documents uploaded. They will help personalize your chat.')
+    } catch (err: unknown) {
+      const errorDetail = err instanceof Object && 'detail' in err ? (err as { detail: string }).detail : null
+      toast.error(errorDetail || 'Could not upload document.')
+    } finally {
+      setDocUploading(false)
+      e.target.value = '' // reset input so same file can be re-selected
+    }
+  }
+
   const handleNext = async () => {
-    if (step === 5) {
+    if (step === 7) {
       // Final step — mark onboarding complete
       setSaving(true)
       try {
@@ -141,6 +190,22 @@ export function OnboardingPage() {
       } catch (err: unknown) {
         const errorDetail = err instanceof Object && 'detail' in err ? (err as { detail: string }).detail : null
         toast.error(errorDetail || 'Could not save contact. You can add it later from your profile.')
+      } finally {
+        setSaving(false)
+      }
+    }
+
+    // Step 5 — Social media
+    if (step === 5 && (redditUsername || twitterUsername)) {
+      setSaving(true)
+      try {
+        await patientApi.updateProfile({
+          reddit_username: redditUsername || undefined,
+          twitter_username: twitterUsername || undefined,
+        } as ProfileUpdate)
+      } catch (err: unknown) {
+        const errorDetail = err instanceof Object && 'detail' in err ? (err as { detail: string }).detail : null
+        toast.error(errorDetail || 'Could not save social handles.')
       } finally {
         setSaving(false)
       }
@@ -351,8 +416,99 @@ export function OnboardingPage() {
               </div>
             )}
 
-            {/* Complete */}
+            {/* Social Media */}
             {step === 5 && (
+              <div className="card-warm p-6 space-y-5">
+                <h2 className="font-display text-2xl text-foreground font-light">Social Media (optional)</h2>
+                <p className="text-sm text-muted-foreground font-body leading-relaxed">
+                  If you're comfortable, share your Reddit or X/Twitter username. We'll use your
+                  public posts to provide richer screening analysis. Private accounts won't be accessed.
+                  You can skip this entirely.
+                </p>
+                <div>
+                  <label className="block text-sm font-medium mb-2 font-body">Reddit username</label>
+                  <div className="flex items-center gap-0">
+                    <span className="px-3 py-3 bg-muted border border-border border-r-0 rounded-l-md text-sm text-muted-foreground font-body">u/</span>
+                    <input
+                      type="text"
+                      className="input py-3 rounded-l-none"
+                      placeholder="username"
+                      value={redditUsername}
+                      onChange={e => setRedditUsername(e.target.value.replace(/[^a-zA-Z0-9_-]/g, ''))}
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2 font-body">X/Twitter username</label>
+                  <div className="flex items-center gap-0">
+                    <span className="px-3 py-3 bg-muted border border-border border-r-0 rounded-l-md text-sm text-muted-foreground font-body">@</span>
+                    <input
+                      type="text"
+                      className="input py-3 rounded-l-none"
+                      placeholder="handle"
+                      value={twitterUsername}
+                      onChange={e => setTwitterUsername(e.target.value.replace(/[^a-zA-Z0-9_]/g, ''))}
+                    />
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground font-body leading-relaxed">
+                  You can add or remove these anytime from your profile. We never post on your behalf.
+                </p>
+              </div>
+            )}
+
+            {/* Documents */}
+            {step === 6 && (
+              <div className="card-warm p-6 space-y-5">
+                <h2 className="font-display text-2xl text-foreground font-light">Existing Records (optional)</h2>
+                <p className="text-sm text-muted-foreground font-body leading-relaxed">
+                  Upload prior PHQ-9 or GAD-7 results, medication lists, journal entries, or previous
+                  diagnoses. Your assistant will reference these to give more personalized guidance.
+                </p>
+                <div>
+                  <label className="block text-sm font-medium mb-2 font-body">Upload files (.txt, .md, .csv)</label>
+                  <input
+                    type="file"
+                    multiple
+                    accept=".txt,.md,.csv"
+                    onChange={handleFileUpload}
+                    disabled={docUploading}
+                    className="block w-full text-sm text-muted-foreground font-body
+                      file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0
+                      file:text-sm file:font-medium file:bg-primary/10 file:text-primary
+                      hover:file:bg-primary/15 file:cursor-pointer cursor-pointer"
+                  />
+                  <p className="text-xs text-muted-foreground mt-2 font-body">
+                    Text-based files only. Max 2MB each. PDF support coming soon — for now, paste PDF contents into a .txt file.
+                  </p>
+                </div>
+                {uploadedDocs.length > 0 && (
+                  <div className="border-t border-border pt-4">
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider font-body mb-2">
+                      Uploaded ({uploadedDocs.length})
+                    </p>
+                    <ul className="space-y-1">
+                      {uploadedDocs.map((d, i) => (
+                        <li key={i} className="text-sm font-body text-foreground flex items-center gap-2">
+                          <Check className="w-3.5 h-3.5 text-emerald-600" />
+                          <span className="truncate">{d.title}</span>
+                          <span className="text-xs text-muted-foreground">({d.doc_type})</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                {docUploading && (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground font-body">
+                    <BreathingDot />
+                    Uploading...
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Complete */}
+            {step === 7 && (
               <div className="text-center">
                 <div className="w-16 h-16 bg-emerald-50 rounded-2xl flex items-center justify-center mx-auto mb-6">
                   <Check className="w-8 h-8 text-emerald-600" />
@@ -371,7 +527,7 @@ export function OnboardingPage() {
 
         {/* Navigation */}
         <div className="flex items-center justify-between mt-8">
-          {step > 0 && step < 5 ? (
+          {step > 0 && step < 7 ? (
             <button onClick={() => setStep(s => s - 1)} className="btn-ghost text-sm">
               <ChevronLeft className="w-4 h-4" /> Back
             </button>
@@ -386,11 +542,11 @@ export function OnboardingPage() {
           >
             {saving ? (
               <><BreathingDot /> Saving...</>
-            ) : step === 5 ? (
+            ) : step === 7 ? (
               'Begin First Screening'
             ) : step === 0 ? (
               <>Let's begin <ChevronRight className="w-4 h-4" /></>
-            ) : step === 3 ? (
+            ) : step === 3 || step === 5 || step === 6 ? (
               <>Skip or Continue <ChevronRight className="w-4 h-4" /></>
             ) : (
               <>Continue <ChevronRight className="w-4 h-4" /></>
@@ -399,7 +555,7 @@ export function OnboardingPage() {
         </div>
 
         {/* Skip onboarding */}
-        {step < 5 && (
+        {step < 7 && (
           <p className="text-center mt-6">
             <button
               onClick={() => navigate('/screening')}

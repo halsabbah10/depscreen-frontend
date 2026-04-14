@@ -89,7 +89,7 @@ export function ResultPage() {
 
               {isPatient && screeningId && (
                 <button
-                  onClick={() => navigate(`/chat/${screeningId}`)}
+                  onClick={() => navigate(`/chat/screening/${screeningId}`)}
                   className="btn-primary text-sm"
                 >
                   <MessageCircle className="w-4 h-4" />

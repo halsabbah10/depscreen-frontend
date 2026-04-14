@@ -117,6 +117,9 @@ export interface UserProfile {
   date_of_birth: string | null
   gender: string | null
   cpr_number: string | null
+  language_preference: string | null
+  reddit_username: string | null
+  twitter_username: string | null
   onboarding_completed: boolean
   created_at: string
 }
@@ -425,6 +428,9 @@ export interface ProfileUpdate {
   language_preference?: string
   timezone?: string
   email_notifications?: boolean
+  reddit_username?: string
+  twitter_username?: string
+  onboarding_completed?: boolean
   new_password?: string
 }
 
