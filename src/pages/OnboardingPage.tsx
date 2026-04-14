@@ -628,12 +628,30 @@ function DobInput({ value, onChange }: DobInputProps) {
   const handleDay = (e: React.ChangeEvent<HTMLInputElement>) => {
     const v = e.target.value.replace(/\D/g, '').slice(0, 2)
     setDay(v)
+    // Auto-advance: if user types 4-9 as first digit, it can only mean 04-09
+    // (days 40-99 are invalid). Pad and advance.
+    if (v.length === 1 && parseInt(v, 10) >= 4) {
+      const padded = '0' + v
+      setDay(padded)
+      monthRef.current?.focus()
+      emit(padded, month, year)
+      return
+    }
     if (v.length === 2) monthRef.current?.focus()
     emit(v, month, year)
   }
   const handleMonth = (e: React.ChangeEvent<HTMLInputElement>) => {
     const v = e.target.value.replace(/\D/g, '').slice(0, 2)
     setMonth(v)
+    // Auto-advance: if user types 2-9 as first digit, it can only mean 02-09
+    // (months 20-99 are invalid). Pad and advance.
+    if (v.length === 1 && parseInt(v, 10) >= 2) {
+      const padded = '0' + v
+      setMonth(padded)
+      yearRef.current?.focus()
+      emit(day, padded, year)
+      return
+    }
     if (v.length === 2) yearRef.current?.focus()
     emit(day, v, year)
   }
@@ -641,6 +659,22 @@ function DobInput({ value, onChange }: DobInputProps) {
     const v = e.target.value.replace(/\D/g, '').slice(0, 4)
     setYear(v)
     emit(day, month, v)
+  }
+
+  // Auto-pad single-digit day/month on blur for ambiguous entries (1, 2, 3 for day; 1 for month).
+  const handleDayBlur = () => {
+    if (day.length === 1) {
+      const padded = '0' + day
+      setDay(padded)
+      emit(padded, month, year)
+    }
+  }
+  const handleMonthBlur = () => {
+    if (month.length === 1) {
+      const padded = '0' + month
+      setMonth(padded)
+      emit(day, padded, year)
+    }
   }
 
   const handleBackspace = (e: React.KeyboardEvent<HTMLInputElement>, current: 'day' | 'month' | 'year') => {
@@ -661,6 +695,7 @@ function DobInput({ value, onChange }: DobInputProps) {
         maxLength={2}
         value={day}
         onChange={handleDay}
+        onBlur={handleDayBlur}
         aria-label="Day"
       />
       <span className="text-muted-foreground">/</span>
@@ -673,6 +708,7 @@ function DobInput({ value, onChange }: DobInputProps) {
         maxLength={2}
         value={month}
         onChange={handleMonth}
+        onBlur={handleMonthBlur}
         onKeyDown={e => handleBackspace(e, 'month')}
         aria-label="Month"
       />
