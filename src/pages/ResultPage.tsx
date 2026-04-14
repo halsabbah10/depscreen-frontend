@@ -2,8 +2,9 @@ import { useEffect, useState } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import {
   ArrowLeft, AlertCircle, MessageCircle,
-  AlertTriangle, Phone,
+  AlertTriangle, Phone, Download,
 } from 'lucide-react'
+import toast from 'react-hot-toast'
 import { screening as screeningApi } from '../api/client'
 import { useAuth } from '../contexts/AuthContext'
 import type { ScreeningResponse } from '../types/api'
@@ -21,6 +22,20 @@ export function ResultPage() {
   const [data, setData] = useState<ScreeningResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [downloading, setDownloading] = useState(false)
+
+  const handleDownloadPdf = async () => {
+    if (!screeningId) return
+    setDownloading(true)
+    try {
+      await screeningApi.downloadPdf(screeningId)
+    } catch (err) {
+      const detail = err instanceof Object && 'detail' in err ? (err as { detail: string }).detail : null
+      toast.error(detail || 'Could not download the PDF.')
+    } finally {
+      setDownloading(false)
+    }
+  }
 
   useEffect(() => {
     if (!screeningId) return
@@ -87,15 +102,28 @@ export function ResultPage() {
                 {isPatient ? 'My History' : 'Dashboard'}
               </Link>
 
-              {isPatient && screeningId && (
-                <button
-                  onClick={() => navigate(`/chat/screening/${screeningId}`)}
-                  className="btn-primary text-sm"
-                >
-                  <MessageCircle className="w-4 h-4" />
-                  Chat about these results
-                </button>
-              )}
+              <div className="flex items-center gap-2">
+                {screeningId && (
+                  <button
+                    onClick={handleDownloadPdf}
+                    disabled={downloading}
+                    className="btn-ghost text-xs disabled:opacity-50"
+                    title="Download this result as a PDF"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    {downloading ? 'Preparing…' : 'Download PDF'}
+                  </button>
+                )}
+                {isPatient && screeningId && (
+                  <button
+                    onClick={() => navigate(`/chat/screening/${screeningId}`)}
+                    className="btn-primary text-sm"
+                  >
+                    <MessageCircle className="w-4 h-4" />
+                    Chat about these results
+                  </button>
+                )}
+              </div>
             </div>
           </StaggerItem>
 

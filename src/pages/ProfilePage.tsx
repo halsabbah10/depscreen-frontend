@@ -182,6 +182,16 @@ export function ProfilePage() {
     }
   }
 
+  const handleExportPdf = async () => {
+    try {
+      await patientApi.downloadExportPdf()
+      toast.success('Your record was exported as a PDF.')
+    } catch (err) {
+      const detail = err instanceof Object && 'detail' in err ? (err as { detail: string }).detail : null
+      toast.error(detail || 'PDF export failed. Please try again.')
+    }
+  }
+
   const tabs: { id: Tab; label: string; icon: typeof User }[] = isPatient
     ? [
         { id: 'overview', label: 'Overview', icon: User },
@@ -566,11 +576,17 @@ export function ProfilePage() {
                       <Download className="w-4 h-4 text-primary" /> Export Your Data
                     </h3>
                     <p className="text-sm text-muted-foreground font-body mb-3">
-                      Download all your screenings, chat history, documents, and profile as JSON.
+                      Download your screenings, profile, medications, allergies, diagnoses and care plans —
+                      pick PDF for something printable, or JSON if you'd like the raw data.
                     </p>
-                    <button onClick={handleExport} className="btn-outline w-full">
-                      <Download className="w-4 h-4" /> Download My Data
-                    </button>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button onClick={handleExportPdf} className="btn-outline">
+                        <Download className="w-4 h-4" /> PDF
+                      </button>
+                      <button onClick={handleExport} className="btn-ghost">
+                        <Download className="w-4 h-4" /> JSON
+                      </button>
+                    </div>
                   </div>
 
                   <div className="card p-5 border-muted-foreground/20">

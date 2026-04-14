@@ -133,6 +133,39 @@ async function del<T>(path: string): Promise<T> {
   return handleResponse<T>(response)
 }
 
+/** Fetch an authenticated endpoint and trigger a browser file download. */
+export async function downloadAsFile(path: string, fallbackFilename: string): Promise<void> {
+  const headers: Record<string, string> = {}
+  if (accessToken) headers['Authorization'] = `Bearer ${accessToken}`
+  const response = await fetch(`${API_BASE}${path}`, { headers })
+  if (!response.ok) {
+    let detail = `Download failed (${response.status})`
+    try {
+      const j = await response.json()
+      if (j?.detail) detail = j.detail
+    } catch {
+      // ignore
+    }
+    throw new APIError(detail, response.status, detail)
+  }
+  // Prefer server-provided filename from Content-Disposition when available
+  let filename = fallbackFilename
+  const cd = response.headers.get('Content-Disposition')
+  if (cd) {
+    const match = cd.match(/filename="?([^";]+)"?/i)
+    if (match?.[1]) filename = match[1]
+  }
+  const blob = await response.blob()
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+  URL.revokeObjectURL(url)
+}
+
 // ── Auth API ─────────────────────────────────────────────────────────────────
 
 export const auth = {
@@ -192,6 +225,11 @@ export const screening = {
 
   async deleteScreening(id: string): Promise<void> {
     await del(`/history/${id}`)
+  },
+
+  /** Download a single screening report as a PDF. */
+  async downloadPdf(id: string): Promise<void> {
+    return downloadAsFile(`/history/${id}/pdf`, `screening-${id.slice(0, 8)}.pdf`)
   },
 }
 
@@ -487,6 +525,11 @@ export const dashboard = {
   async notifyPatient(patientId: string, data: { title: string; message: string; notification_type: string; link?: string }): Promise<void> {
     return post(`/dashboard/patients/${patientId}/notify`, data)
   },
+
+  /** Clinician-side PDF clinical summary download. */
+  async downloadPatientSummaryPdf(patientId: string): Promise<void> {
+    return downloadAsFile(`/dashboard/patients/${patientId}/summary.pdf`, 'patient-summary.pdf')
+  },
 }
 
 // ── Patient Self-Service API ─────────────────────────────────────────────────
@@ -542,6 +585,11 @@ export const patient = {
 
   async exportData(): Promise<unknown> {
     return get('/patient/export')
+  },
+
+  /** Download the patient's full record as a printable PDF. */
+  async downloadExportPdf(): Promise<void> {
+    return downloadAsFile('/patient/export/pdf', 'depscreen-my-record.pdf')
   },
 
   async unlinkClinician(): Promise<{ status: string }> {

@@ -3,7 +3,7 @@ import { useParams, Link } from 'react-router-dom'
 import {
   ArrowLeft, ClipboardList, BarChart3, FileText, ClipboardCheck, UserCircle2,
   ChevronRight, AlertTriangle, TrendingUp, TrendingDown, Minus, Plus, Save, Target, Sparkles,
-  Phone, Pill, Activity, Heart, Calendar, Pencil, Trash2, X,
+  Phone, Pill, Activity, Heart, Calendar, Pencil, Trash2, X, Download,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { dashboard, terminology } from '../api/client'
@@ -114,14 +114,33 @@ export function PatientDetailPage() {
 
   return (
     <PageTransition className="max-w-4xl mx-auto space-y-6">
-      {/* Back button */}
-      <Link
-        to="/patients"
-        className="inline-flex items-center gap-1.5 text-sm font-body text-muted-foreground hover:text-foreground transition-colors"
-      >
-        <ArrowLeft className="w-4 h-4" />
-        Back to Patients
-      </Link>
+      {/* Back button + clinical summary download */}
+      <div className="flex items-center justify-between">
+        <Link
+          to="/patients"
+          className="inline-flex items-center gap-1.5 text-sm font-body text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          Back to Patients
+        </Link>
+        {patientId && (
+          <button
+            onClick={async () => {
+              try {
+                await dashboard.downloadPatientSummaryPdf(patientId)
+              } catch (err) {
+                const detail = err instanceof Object && 'detail' in err ? (err as { detail: string }).detail : null
+                toast.error(detail || 'Could not download summary.')
+              }
+            }}
+            className="btn-ghost text-xs"
+            title="Download clinical summary as PDF"
+          >
+            <Download className="w-3.5 h-3.5" />
+            Clinical summary PDF
+          </button>
+        )}
+      </div>
 
       {/* Patient header card */}
       <div className="card-warm rounded-xl p-6 flex flex-col sm:flex-row items-start sm:items-center gap-5">
