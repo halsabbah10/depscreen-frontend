@@ -7,7 +7,7 @@
  * Tone: warm, unhurried, non-judgmental. "Take your time."
  */
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ChevronRight, ChevronLeft, Heart, Check } from 'lucide-react'
@@ -88,8 +88,8 @@ export function OnboardingPage() {
   const canProceed = () => {
     switch (step) {
       case 0: return true // welcome
-      case 1: return dateOfBirth && gender
-      case 2: return phone
+      case 1: return dateOfBirth && gender && nationality
+      case 2: return phone && cprNumber && cprNumber.length === 9
       case 3: return true // medical is optional
       case 4: return contactName && contactPhone
       case 5: return true // social is optional
@@ -266,7 +266,8 @@ export function OnboardingPage() {
                 <h2 className="font-display text-2xl text-foreground font-light">About You</h2>
                 <div>
                   <label className="block text-sm font-medium mb-2 font-body">Date of Birth</label>
-                  <input type="date" className="input py-3" value={dateOfBirth} onChange={e => setDateOfBirth(e.target.value)} />
+                  <DobInput value={dateOfBirth} onChange={setDateOfBirth} />
+                  <p className="text-xs text-muted-foreground mt-1.5 font-body">DD / MM / YYYY</p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-2 font-body">Gender</label>
@@ -292,10 +293,17 @@ export function OnboardingPage() {
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-2 font-body">
-                    Nationality <span className="text-muted-foreground font-normal">(optional)</span>
-                  </label>
-                  <input type="text" className="input py-3" placeholder="e.g. Bahraini" value={nationality} onChange={e => setNationality(e.target.value)} />
+                  <label className="block text-sm font-medium mb-2 font-body">Nationality</label>
+                  <select
+                    className="input py-3"
+                    value={nationality}
+                    onChange={e => setNationality(e.target.value)}
+                  >
+                    <option value="">Select your nationality</option>
+                    {NATIONALITIES.map(n => (
+                      <option key={n} value={n}>{n}</option>
+                    ))}
+                  </select>
                 </div>
               </div>
             )}
@@ -321,9 +329,7 @@ export function OnboardingPage() {
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-2 font-body">
-                    CPR Number <span className="text-muted-foreground font-normal">(optional)</span>
-                  </label>
+                  <label className="block text-sm font-medium mb-2 font-body">CPR Number</label>
                   <input
                     type="text"
                     className="input py-3 font-mono tracking-wider"
@@ -332,7 +338,9 @@ export function OnboardingPage() {
                     value={cprNumber}
                     onChange={e => setCprNumber(e.target.value.replace(/\D/g, ''))}
                   />
-                  <p className="text-xs text-muted-foreground mt-1 font-body">Your 9-digit Civil Personal Record number.</p>
+                  <p className="text-xs text-muted-foreground mt-1 font-body">
+                    Your 9-digit Civil Personal Record number — required for clinical records.
+                  </p>
                 </div>
               </div>
             )}
@@ -569,3 +577,125 @@ export function OnboardingPage() {
     </div>
   )
 }
+
+// ── DD / MM / YYYY date input ────────────────────────────────────────────────
+// Emits ISO "YYYY-MM-DD" via onChange when all three parts are valid.
+interface DobInputProps {
+  value: string // ISO YYYY-MM-DD or empty
+  onChange: (iso: string) => void
+}
+
+function DobInput({ value, onChange }: DobInputProps) {
+  // Parse incoming ISO into parts
+  const [dd, mm, yyyy] = (() => {
+    if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return ['', '', '']
+    const [y, m, d] = value.split('-')
+    return [d, m, y]
+  })()
+
+  const [day, setDay] = useState(dd)
+  const [month, setMonth] = useState(mm)
+  const [year, setYear] = useState(yyyy)
+
+  const dayRef = useRef<HTMLInputElement>(null)
+  const monthRef = useRef<HTMLInputElement>(null)
+  const yearRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    setDay(dd); setMonth(mm); setYear(yyyy)
+  }, [value, dd, mm, yyyy])
+
+  const emit = (d: string, m: string, y: string) => {
+    if (d.length === 2 && m.length === 2 && y.length === 4) {
+      const dNum = parseInt(d, 10)
+      const mNum = parseInt(m, 10)
+      const yNum = parseInt(y, 10)
+      if (dNum >= 1 && dNum <= 31 && mNum >= 1 && mNum <= 12 && yNum >= 1900 && yNum <= new Date().getFullYear()) {
+        onChange(`${y}-${m}-${d}`)
+        return
+      }
+    }
+    onChange('')
+  }
+
+  const handleDay = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const v = e.target.value.replace(/\D/g, '').slice(0, 2)
+    setDay(v)
+    if (v.length === 2) monthRef.current?.focus()
+    emit(v, month, year)
+  }
+  const handleMonth = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const v = e.target.value.replace(/\D/g, '').slice(0, 2)
+    setMonth(v)
+    if (v.length === 2) yearRef.current?.focus()
+    emit(day, v, year)
+  }
+  const handleYear = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const v = e.target.value.replace(/\D/g, '').slice(0, 4)
+    setYear(v)
+    emit(day, month, v)
+  }
+
+  const handleBackspace = (e: React.KeyboardEvent<HTMLInputElement>, current: 'day' | 'month' | 'year') => {
+    if (e.key === 'Backspace' && (e.currentTarget.value === '')) {
+      if (current === 'month') dayRef.current?.focus()
+      else if (current === 'year') monthRef.current?.focus()
+    }
+  }
+
+  return (
+    <div className="flex items-center gap-2 font-body">
+      <input
+        ref={dayRef}
+        type="text"
+        inputMode="numeric"
+        className="input py-3 text-center tracking-wider w-16"
+        placeholder="DD"
+        maxLength={2}
+        value={day}
+        onChange={handleDay}
+        aria-label="Day"
+      />
+      <span className="text-muted-foreground">/</span>
+      <input
+        ref={monthRef}
+        type="text"
+        inputMode="numeric"
+        className="input py-3 text-center tracking-wider w-16"
+        placeholder="MM"
+        maxLength={2}
+        value={month}
+        onChange={handleMonth}
+        onKeyDown={e => handleBackspace(e, 'month')}
+        aria-label="Month"
+      />
+      <span className="text-muted-foreground">/</span>
+      <input
+        ref={yearRef}
+        type="text"
+        inputMode="numeric"
+        className="input py-3 text-center tracking-wider w-24"
+        placeholder="YYYY"
+        maxLength={4}
+        value={year}
+        onChange={handleYear}
+        onKeyDown={e => handleBackspace(e, 'year')}
+        aria-label="Year"
+      />
+    </div>
+  )
+}
+
+// ── Nationality list — alphabetized, Bahrain first as default local context ──
+const NATIONALITIES = [
+  'Bahraini', 'Emirati', 'Saudi', 'Kuwaiti', 'Qatari', 'Omani', 'Yemeni',
+  'Egyptian', 'Jordanian', 'Lebanese', 'Palestinian', 'Syrian', 'Iraqi', 'Moroccan', 'Tunisian', 'Algerian', 'Sudanese', 'Libyan',
+  'Indian', 'Pakistani', 'Bangladeshi', 'Sri Lankan', 'Filipino', 'Indonesian', 'Nepali',
+  'British', 'American', 'Canadian', 'Australian', 'Irish',
+  'French', 'German', 'Italian', 'Spanish', 'Portuguese', 'Dutch', 'Swedish', 'Norwegian', 'Danish', 'Finnish', 'Polish', 'Greek', 'Russian', 'Ukrainian',
+  'Turkish', 'Iranian',
+  'Chinese', 'Japanese', 'Korean', 'Thai', 'Vietnamese', 'Malaysian', 'Singaporean',
+  'South African', 'Nigerian', 'Kenyan', 'Ethiopian', 'Ghanaian',
+  'Brazilian', 'Argentinian', 'Mexican', 'Colombian', 'Chilean',
+  'Other',
+]
