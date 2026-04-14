@@ -48,20 +48,27 @@ export function Layout() {
       {/* Toast notifications */}
       <Toaster
         position="top-right"
+        gutter={10}
         toastOptions={{
-          duration: 5000,
+          duration: 4500,
           style: {
             fontFamily: 'Figtree, system-ui, sans-serif',
-            background: 'hsl(35 20% 94%)',
-            color: 'hsl(220 15% 15%)',
-            border: '1px solid hsl(35 15% 85%)',
-            boxShadow: '0 4px 12px hsl(35 20% 80% / 0.2)',
+            fontSize: '13.5px',
+            lineHeight: '1.45',
+            letterSpacing: '0.01em',
+            padding: '12px 14px',
+            borderRadius: '12px',
+            background: 'hsl(35 22% 96%)',
+            color: 'hsl(220 15% 14%)',
+            border: '1px solid hsl(35 18% 82%)',
+            boxShadow:
+              '0 10px 30px -12px hsl(220 20% 20% / 0.15), 0 2px 6px hsl(220 20% 20% / 0.06)',
           },
           success: {
-            iconTheme: { primary: 'hsl(175 45% 32%)', secondary: 'white' },
+            iconTheme: { primary: 'hsl(175 45% 34%)', secondary: 'hsl(35 25% 97%)' },
           },
           error: {
-            iconTheme: { primary: 'hsl(10 50% 45%)', secondary: 'white' },
+            iconTheme: { primary: 'hsl(10 55% 45%)', secondary: 'hsl(35 25% 97%)' },
           },
         }}
       />

@@ -235,6 +235,57 @@
   }
 }
 
+/* ── Scrollbar ─────────────────────────────────────────────────────────────
+ * A slim teal-tinted scrollbar that matches the Clinical Sanctuary palette.
+ * Default browser scrollbars look like system UI chrome; that breaks the
+ * editorial feel the rest of the app commits to. WebKit + Firefox covered.
+ */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(175 30% 60% / 0.45) transparent;
+}
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+*::-webkit-scrollbar-thumb {
+  background: hsl(175 30% 55% / 0.35);
+  border-radius: 8px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: hsl(175 40% 40% / 0.55);
+  background-clip: content-box;
+}
+*::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* ── Text selection ────────────────────────────────────────────────────────
+ * Highlight color should feel editorial, not browser-default sky blue.
+ */
+::selection {
+  background: hsl(175 45% 32% / 0.18);
+  color: hsl(220 15% 10%);
+}
+
+/* ── Typography rhythm ─────────────────────────────────────────────────────
+ * Tighten display-font tracking slightly at reading sizes and give body
+ * paragraphs the modern text-wrap:pretty treatment so orphaned words at
+ * the end of a line become less common. These only apply to raw semantic
+ * tags, so component classes with explicit tracking stay unaffected.
+ */
+h1, h2, h3 {
+  letter-spacing: 0.005em;
+}
+p {
+  text-wrap: pretty;
+}
+
 /* ── System-wide motion ─────────────────────────────────────────────────────
  *
  * For a mental health platform: everything moves gently, like a slow breath.
