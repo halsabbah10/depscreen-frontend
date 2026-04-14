@@ -378,7 +378,7 @@
   .prose-chat li { @apply leading-relaxed; }
   .prose-chat li p { @apply my-0; }
   .prose-chat code {
-    @apply px-1.5 py-0.5 rounded bg-primary/8 text-primary text-[0.85em] font-mono;
+    @apply px-1.5 py-0.5 rounded bg-primary/10 text-primary text-[0.85em] font-mono;
   }
   .prose-chat pre {
     @apply bg-muted/80 border border-border rounded-md p-3 my-2 overflow-x-auto text-xs;

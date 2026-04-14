@@ -497,7 +497,7 @@ export function ScreeningPage() {
                       p-3 rounded-lg border text-sm font-body text-center transition-all duration-200
                       ${isActive
                         ? 'border-primary/40 bg-primary/5 text-primary font-medium'
-                        : 'border-border bg-background text-muted-foreground hover:border-primary/20 hover:bg-primary/3'}
+                        : 'border-border bg-background text-muted-foreground hover:border-primary/20 hover:bg-primary/5'}
                     `}
                   >
                     {label}

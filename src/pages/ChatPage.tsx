@@ -321,7 +321,7 @@ export function ChatPage() {
                                 tabIndex={0}
                                 className={`w-full text-left px-4 py-2.5 text-xs flex items-start gap-2 group transition-colors cursor-pointer ${
                                   isActive
-                                    ? 'bg-primary/8 text-foreground'
+                                    ? 'bg-primary/10 text-foreground'
                                     : 'text-muted-foreground hover:bg-muted/40 hover:text-foreground'
                                 }`}
                               >
@@ -456,7 +456,7 @@ function ChatPanel(props: ChatPanelProps) {
               <button
                 key={q}
                 onClick={() => setInput(q)}
-                className="text-xs px-3.5 py-2 rounded-full border border-border text-muted-foreground hover:text-foreground hover:border-primary/30 hover:bg-primary/3 transition-all duration-200"
+                className="text-xs px-3.5 py-2 rounded-full border border-border text-muted-foreground hover:text-foreground hover:border-primary/30 hover:bg-primary/5 transition-all duration-200"
               >
                 {q}
               </button>
