@@ -1,21 +1,23 @@
 import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import {
-  ArrowLeft, ClipboardList, BarChart3, FileText, ClipboardCheck,
+  ArrowLeft, ClipboardList, BarChart3, FileText, ClipboardCheck, UserCircle2,
   ChevronRight, AlertTriangle, TrendingUp, TrendingDown, Minus, Plus, Save, Target, Sparkles,
+  Phone, Pill, Activity, Heart, Calendar,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { dashboard } from '../api/client'
-import type { PatientSummary, ScreeningHistoryResponse, SymptomTrend, PatientDocument, CarePlanResponse } from '../types/api'
+import type { PatientSummary, ScreeningHistoryResponse, SymptomTrend, PatientDocument, CarePlanResponse, PatientFullProfile } from '../types/api'
 import { SEVERITY_COLORS, SYMPTOM_COLORS } from '../types/api'
 import { formatDate } from '../lib/localization'
 import { PageTransition, StaggerChildren, StaggerItem } from '../components/ui/PageTransition'
 import { BreathingCircle } from '../components/ui/BreathingCircle'
 import { EmptyState } from '../components/ui/EmptyState'
 
-type Tab = 'screenings' | 'trends' | 'documents' | 'care-plan'
+type Tab = 'profile' | 'screenings' | 'trends' | 'documents' | 'care-plan'
 
 const TABS: { id: Tab; label: string; icon: typeof ClipboardList }[] = [
+  { id: 'profile', label: 'Profile', icon: UserCircle2 },
   { id: 'screenings', label: 'Screenings', icon: ClipboardList },
   { id: 'trends', label: 'Trends', icon: BarChart3 },
   { id: 'documents', label: 'Documents', icon: FileText },
@@ -68,7 +70,7 @@ export function PatientDetailPage() {
   const [trends, setTrends] = useState<SymptomTrend | null>(null)
   const [documents, setDocuments] = useState<PatientDocument[]>([])
   const [loading, setLoading] = useState(true)
-  const [tab, setTab] = useState<Tab>('screenings')
+  const [tab, setTab] = useState<Tab>('profile')
 
   const patient = patients.find(p => p.id === patientId)
 
@@ -165,6 +167,9 @@ export function PatientDetailPage() {
           </button>
         ))}
       </div>
+
+      {/* ── Profile tab — full patient details ── */}
+      {tab === 'profile' && patientId && <ProfileTab patientId={patientId} />}
 
       {/* ── Screenings tab ── */}
       {tab === 'screenings' && (
@@ -714,6 +719,262 @@ function CarePlanTab({ patientId }: { patientId: string }) {
             </StaggerItem>
           ))}
         </StaggerChildren>
+      )}
+    </div>
+  )
+}
+
+// ── Profile Tab — complete patient details ──────────────────────────────────
+
+function Section({
+  icon: Icon,
+  title,
+  children,
+}: {
+  icon: typeof Pill
+  title: string
+  children: React.ReactNode
+}) {
+  return (
+    <section className="card-warm rounded-xl p-5 mb-4">
+      <h3 className="font-display text-base text-foreground font-medium flex items-center gap-2 mb-3">
+        <Icon className="w-4 h-4 text-primary" />
+        {title}
+      </h3>
+      {children}
+    </section>
+  )
+}
+
+function DataRow({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <div className="flex items-start gap-4 py-1.5 text-sm font-body">
+      <span className="text-muted-foreground min-w-[140px]">{label}</span>
+      <span className="text-foreground flex-1">{value || <span className="text-muted-foreground italic">—</span>}</span>
+    </div>
+  )
+}
+
+const SEVERITY_COLORS_MAP: Record<string, string> = {
+  severe: 'bg-rose-100 text-rose-700',
+  moderate: 'bg-amber-100 text-amber-700',
+  mild: 'bg-sky-100 text-sky-700',
+  'life-threatening': 'bg-rose-200 text-rose-900',
+}
+
+function ProfileTab({ patientId }: { patientId: string }) {
+  const [profile, setProfile] = useState<PatientFullProfile | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    setLoading(true)
+    dashboard
+      .getPatientFullProfile(patientId)
+      .then(setProfile)
+      .catch(err => {
+        const detail = err instanceof Object && 'detail' in err ? (err as { detail: string }).detail : null
+        toast.error(detail || 'Could not load patient profile.')
+      })
+      .finally(() => setLoading(false))
+  }, [patientId])
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-16">
+        <BreathingCircle size="sm" label="Loading patient profile..." />
+      </div>
+    )
+  }
+  if (!profile) return null
+
+  const d = profile.demographics
+  const mi = profile.medical_identifiers
+  const c = profile.contact
+  const s = profile.stats
+
+  return (
+    <div>
+      {/* Top summary stats */}
+      <div className="grid grid-cols-4 gap-3 mb-4">
+        <div className="card-warm rounded-xl p-3 text-center">
+          <p className="font-display text-xl text-foreground font-light">{s.total_screenings}</p>
+          <p className="text-[10px] text-muted-foreground font-body uppercase tracking-wider mt-1">Screenings</p>
+        </div>
+        <div className="card-warm rounded-xl p-3 text-center">
+          <p className="font-display text-xl text-foreground font-light">{s.upcoming_appointments}</p>
+          <p className="text-[10px] text-muted-foreground font-body uppercase tracking-wider mt-1">Upcoming</p>
+        </div>
+        <div className="card-warm rounded-xl p-3 text-center">
+          <p className="font-display text-xl text-foreground font-light">{s.active_care_plans}</p>
+          <p className="text-[10px] text-muted-foreground font-body uppercase tracking-wider mt-1">Care Plans</p>
+        </div>
+        <div className="card-warm rounded-xl p-3 text-center">
+          <p className="font-display text-xl text-foreground font-light capitalize">{s.last_severity || '—'}</p>
+          <p className="text-[10px] text-muted-foreground font-body uppercase tracking-wider mt-1">Last Severity</p>
+        </div>
+      </div>
+
+      <Section icon={UserCircle2} title="Demographics">
+        <DataRow label="Full Name" value={profile.full_name} />
+        <DataRow label="Email" value={profile.email} />
+        <DataRow
+          label="Date of Birth"
+          value={d.date_of_birth ? `${formatDate(d.date_of_birth)}${d.age ? ` (${d.age} years)` : ''}` : null}
+        />
+        <DataRow label="Gender" value={d.gender ? <span className="capitalize">{d.gender.replace('_', ' ')}</span> : null} />
+        <DataRow label="Nationality" value={d.nationality} />
+        <DataRow label="Language" value={d.language_preference === 'ar' ? 'Arabic' : 'English'} />
+        <DataRow label="Timezone" value={d.timezone} />
+        <DataRow
+          label="Onboarding"
+          value={
+            profile.onboarding_completed ? (
+              <span className="text-emerald-700">Completed</span>
+            ) : (
+              <span className="text-amber-700">In progress</span>
+            )
+          }
+        />
+      </Section>
+
+      <Section icon={UserCircle2} title="Medical Identifiers">
+        <DataRow
+          label="CPR Number"
+          value={mi.cpr_number ? <span className="font-mono tracking-wider">{mi.cpr_number}</span> : null}
+        />
+        <DataRow label="Medical Record #" value={mi.medical_record_number} />
+        <DataRow label="Blood Type" value={mi.blood_type} />
+      </Section>
+
+      <Section icon={Phone} title="Contact">
+        <DataRow label="Phone" value={c.phone} />
+        <DataRow label="Reddit" value={c.reddit_username ? `u/${c.reddit_username}` : null} />
+        <DataRow label="X / Twitter" value={c.twitter_username ? `@${c.twitter_username}` : null} />
+      </Section>
+
+      <Section icon={Pill} title={`Medications (${profile.medications.length})`}>
+        {profile.medications.length === 0 ? (
+          <p className="text-sm text-muted-foreground font-body italic">No medications on record.</p>
+        ) : (
+          <div className="space-y-2">
+            {profile.medications.map(m => (
+              <div key={m.id} className="flex items-start gap-3 py-2 border-b border-border last:border-0">
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    <span className="font-body font-medium text-sm text-foreground">{m.name}</span>
+                    {m.dosage && <span className="text-xs text-muted-foreground font-body">· {m.dosage}</span>}
+                    {m.frequency && <span className="text-xs text-muted-foreground font-body">· {m.frequency}</span>}
+                    {!m.is_active && (
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-muted text-muted-foreground">Inactive</span>
+                    )}
+                  </div>
+                  {(m.prescribed_by || m.start_date) && (
+                    <p className="text-[11px] text-muted-foreground font-body mt-0.5">
+                      {m.prescribed_by && `Prescribed by ${m.prescribed_by}`}
+                      {m.start_date && ` · Started ${formatDate(m.start_date)}`}
+                    </p>
+                  )}
+                  {m.notes && <p className="text-xs text-muted-foreground font-body italic mt-1">"{m.notes}"</p>}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </Section>
+
+      <Section icon={Activity} title={`Allergies (${profile.allergies.length})`}>
+        {profile.allergies.length === 0 ? (
+          <p className="text-sm text-muted-foreground font-body italic">No known allergies.</p>
+        ) : (
+          <div className="space-y-2">
+            {profile.allergies.map(a => (
+              <div key={a.id} className="flex items-start gap-3 py-2 border-b border-border last:border-0">
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    <span className="font-body font-medium text-sm text-foreground">{a.allergen}</span>
+                    {a.severity && (
+                      <span className={`text-[10px] px-2 py-0.5 rounded-full ${SEVERITY_COLORS_MAP[a.severity] || 'bg-muted'}`}>
+                        {a.severity}
+                      </span>
+                    )}
+                    {a.allergy_type && (
+                      <span className="text-[10px] text-muted-foreground font-body">· {a.allergy_type}</span>
+                    )}
+                  </div>
+                  {a.reaction && <p className="text-xs text-muted-foreground font-body mt-1">Reaction: {a.reaction}</p>}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </Section>
+
+      <Section icon={Heart} title={`Diagnoses (${profile.diagnoses.length})`}>
+        {profile.diagnoses.length === 0 ? (
+          <p className="text-sm text-muted-foreground font-body italic">No diagnoses on record.</p>
+        ) : (
+          <div className="space-y-2">
+            {profile.diagnoses.map(dx => (
+              <div key={dx.id} className="py-2 border-b border-border last:border-0">
+                <div className="flex items-center gap-2">
+                  <span className="font-body font-medium text-sm text-foreground">{dx.condition}</span>
+                  {dx.icd10_code && (
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-muted text-muted-foreground">
+                      {dx.icd10_code}
+                    </span>
+                  )}
+                  {dx.status && (
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-primary/10 text-primary">{dx.status}</span>
+                  )}
+                </div>
+                {(dx.diagnosed_by || dx.diagnosed_date) && (
+                  <p className="text-[11px] text-muted-foreground font-body mt-0.5">
+                    {dx.diagnosed_date && `Diagnosed ${formatDate(dx.diagnosed_date)}`}
+                    {dx.diagnosed_by && ` · By ${dx.diagnosed_by}`}
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </Section>
+
+      <Section icon={Phone} title={`Emergency Contacts (${profile.emergency_contacts.length})`}>
+        {profile.emergency_contacts.length === 0 ? (
+          <p className="text-sm text-muted-foreground font-body italic">No emergency contacts on record.</p>
+        ) : (
+          <div className="space-y-2">
+            {profile.emergency_contacts.map(ec => (
+              <div key={ec.id} className="flex items-start gap-3 py-2 border-b border-border last:border-0">
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    <span className="font-body font-medium text-sm text-foreground">{ec.contact_name}</span>
+                    {ec.is_primary && (
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-primary/10 text-primary">Primary</span>
+                    )}
+                    {ec.relation && <span className="text-xs text-muted-foreground font-body">· {ec.relation}</span>}
+                  </div>
+                  <p className="text-xs text-muted-foreground font-body mt-0.5 font-mono">{ec.phone}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </Section>
+
+      {profile.screening_schedule && (
+        <Section icon={Calendar} title="Recurring Check-ins">
+          <DataRow label="Frequency" value={<span className="capitalize">{profile.screening_schedule.frequency}</span>} />
+          {profile.screening_schedule.preferred_time && (
+            <DataRow label="Preferred time" value={profile.screening_schedule.preferred_time} />
+          )}
+          {profile.screening_schedule.next_due_at && (
+            <DataRow label="Next due" value={formatDate(profile.screening_schedule.next_due_at)} />
+          )}
+          {profile.screening_schedule.last_completed_at && (
+            <DataRow label="Last completed" value={formatDate(profile.screening_schedule.last_completed_at)} />
+          )}
+        </Section>
       )}
     </div>
   )

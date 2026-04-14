@@ -372,6 +372,86 @@ export interface NotificationResponse {
 
 // ── Care Plans ───────────────────────────────────────────────────────────────
 
+export interface PatientFullProfile {
+  id: string
+  email: string
+  full_name: string
+  demographics: {
+    date_of_birth: string | null
+    age: number | null
+    gender: string | null
+    nationality: string | null
+    language_preference: string | null
+    timezone: string | null
+  }
+  medical_identifiers: {
+    cpr_number: string | null
+    medical_record_number: string | null
+    blood_type: string | null
+  }
+  contact: {
+    phone: string | null
+    reddit_username: string | null
+    twitter_username: string | null
+  }
+  onboarding_completed: boolean
+  profile_picture_url: string | null
+  created_at: string | null
+  last_login_at: string | null
+  medications: Array<{
+    id: string
+    name: string
+    dosage: string | null
+    frequency: string | null
+    start_date: string | null
+    end_date: string | null
+    is_active: boolean
+    prescribed_by: string | null
+    notes: string | null
+  }>
+  allergies: Array<{
+    id: string
+    allergen: string
+    severity: string | null
+    allergy_type: string | null
+    reaction: string | null
+    diagnosed_date: string | null
+    notes: string | null
+  }>
+  diagnoses: Array<{
+    id: string
+    condition: string
+    icd10_code: string | null
+    status: string | null
+    diagnosed_date: string | null
+    diagnosed_by: string | null
+    notes: string | null
+  }>
+  emergency_contacts: Array<{
+    id: string
+    contact_name: string
+    phone: string
+    relation: string | null
+    is_primary: boolean
+  }>
+  screening_schedule: {
+    id: string
+    frequency: string
+    day_of_week: number | null
+    preferred_time: string | null
+    next_due_at: string | null
+    last_completed_at: string | null
+  } | null
+  stats: {
+    total_screenings: number
+    total_documents: number
+    upcoming_appointments: number
+    active_care_plans: number
+    last_severity: string | null
+    last_screening_date: string | null
+  }
+}
+
 export interface CarePlanCreate {
   patient_id: string
   title: string

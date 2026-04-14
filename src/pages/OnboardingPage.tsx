@@ -142,18 +142,25 @@ export function OnboardingPage() {
 
   const handleNext = async () => {
     if (step === 7) {
-      // Final step — mark onboarding complete
+      // Final step — mark onboarding complete. Navigate unconditionally so the
+      // user isn't stuck even if the non-critical completion POST fails (the
+      // backend auto-completes onboarding when required profile fields are set).
       setSaving(true)
       try {
         await patientApi.completeOnboarding()
-        await refreshUser()
-        toast.success('Welcome to DepScreen. You are ready for your first screening.')
-        navigate('/screening')
       } catch (err: unknown) {
         const errorDetail = err instanceof Object && 'detail' in err ? (err as { detail: string }).detail : null
-        toast.error(errorDetail || 'Could not complete onboarding. You can try again later.')
+        // Show as warning, not error — they've already provided their info
+        toast(errorDetail || 'Onboarding flag will sync shortly.', { icon: 'ℹ️' })
       } finally {
+        try {
+          await refreshUser()
+        } catch {
+          /* ignore refresh failures */
+        }
+        toast.success('Welcome to DepScreen. You are ready for your first screening.')
         setSaving(false)
+        navigate('/screening')
       }
       return
     }

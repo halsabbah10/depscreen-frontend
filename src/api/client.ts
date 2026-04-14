@@ -349,6 +349,10 @@ export const dashboard = {
     return get<ScreeningHistoryResponse>(`/dashboard/patients/${patientId}/screenings?page=${page}&page_size=${pageSize}`)
   },
 
+  async getPatientFullProfile(patientId: string): Promise<import('../types/api').PatientFullProfile> {
+    return get<import('../types/api').PatientFullProfile>(`/dashboard/patients/${patientId}/full-profile`)
+  },
+
   async getPatientTrends(patientId: string, days = 90): Promise<SymptomTrend> {
     return get<SymptomTrend>(`/dashboard/patients/${patientId}/trends?days=${days}`)
   },
@@ -427,7 +431,7 @@ export const dashboard = {
 
   // Notifications
   async notifyPatient(patientId: string, data: { title: string; message: string; notification_type: string; link?: string }): Promise<void> {
-    return post(`/dashboard/patients/${patientId}/notifications`, data)
+    return post(`/dashboard/patients/${patientId}/notify`, data)
   },
 }
 
@@ -553,11 +557,11 @@ export const patient = {
 
   // Onboarding
   async getOnboardingStatus(): Promise<OnboardingProgress> {
-    return get<OnboardingProgress>('/patient/onboarding')
+    return get<OnboardingProgress>('/patient/onboarding-status')
   },
 
   async completeOnboarding(): Promise<{ status: string }> {
-    return post('/patient/onboarding/complete')
+    return post('/patient/onboarding-complete')
   },
 
   // Profile Picture

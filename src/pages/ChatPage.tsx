@@ -18,7 +18,7 @@
  */
 
 import { useEffect, useState, useRef, useMemo } from 'react'
-import { useParams, useNavigate, Link } from 'react-router-dom'
+import { useLocation, useNavigate, Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ArrowLeft, Send, Bot, Plus, MessageCircle, Trash2, Copy, Pencil } from 'lucide-react'
 import toast from 'react-hot-toast'
@@ -33,8 +33,18 @@ import { EmptyState } from '../components/ui/EmptyState'
 import { formatRelative } from '../lib/localization'
 
 export function ChatPage() {
-  const { conversationId, screeningId } = useParams<{ conversationId: string; screeningId: string }>()
+  const location = useLocation()
   const navigate = useNavigate()
+  // Parse path manually so the component stays mounted when switching between
+  // /chat, /chat/c/:id, /chat/screening/:id (one Route handles all via /chat/*).
+  const conversationId = useMemo(() => {
+    const m = location.pathname.match(/^\/chat\/c\/([^/]+)/)
+    return m ? m[1] : undefined
+  }, [location.pathname])
+  const screeningId = useMemo(() => {
+    const m = location.pathname.match(/^\/chat\/screening\/([^/]+)/)
+    return m ? m[1] : undefined
+  }, [location.pathname])
   const { user } = useAuth()
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [screening, setScreening] = useState<ScreeningResponse | null>(null)
@@ -46,6 +56,9 @@ export function ChatPage() {
   const [renameValue, setRenameValue] = useState('')
   const bottomRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
+  // Track conversation IDs we've just created locally so the reload-messages
+  // effect can skip fetching for them (we already have the messages in state).
+  const locallyCreatedConvIds = useRef<Set<string>>(new Set())
 
   const isScreeningChat = !!screeningId
 
@@ -69,6 +82,12 @@ export function ChatPage() {
   useEffect(() => {
     if (isScreeningChat) return
     if (conversationId) {
+      // Skip reload if we just created this conversation locally — we already
+      // have the messages in state from the streaming session.
+      if (locallyCreatedConvIds.current.has(conversationId)) {
+        setLoading(false)
+        return
+      }
       setLoading(true)
       chatApi.getConversationMessages(conversationId)
         .then(r => setMessages(r.messages))
@@ -165,7 +184,9 @@ export function ChatPage() {
         if (!convId) {
           const conv = await chatApi.createConversation({ title: text.slice(0, 50), context_type: 'general' })
           convId = conv.id
-          // Navigate so URL reflects the new conversation (replace so back button doesn't go to empty /chat)
+          // Mark as locally created so the URL-change useEffect doesn't reload
+          // (and blank the streaming messages we're about to populate).
+          locallyCreatedConvIds.current.add(convId)
           navigate(`/chat/c/${convId}`, { replace: true })
         }
         await chatApi.streamConversationMessage(convId, text, appendChunk)

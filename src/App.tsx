@@ -69,13 +69,7 @@ function AppRoutes() {
         <Route path="/trends" element={
           <ProtectedRoute roles={['patient']}><TrendsPage /></ProtectedRoute>
         } />
-        <Route path="/chat" element={
-          <ProtectedRoute roles={['patient']}><ChatPage /></ProtectedRoute>
-        } />
-        <Route path="/chat/c/:conversationId" element={
-          <ProtectedRoute roles={['patient']}><ChatPage /></ProtectedRoute>
-        } />
-        <Route path="/chat/screening/:screeningId" element={
+        <Route path="/chat/*" element={
           <ProtectedRoute roles={['patient']}><ChatPage /></ProtectedRoute>
         } />
         <Route path="/notifications" element={
