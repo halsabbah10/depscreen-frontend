@@ -198,7 +198,13 @@ export function formatTime(value: string | Date | number | null | undefined): st
  */
 export function formatRelative(value: string | Date | number | null | undefined): string {
   if (!value) return ''
-  const d = value instanceof Date ? value : new Date(value)
+  // Backend returns naive UTC datetimes — treat as UTC by appending 'Z' if no TZ info
+  const d =
+    value instanceof Date
+      ? value
+      : typeof value === 'string' && !/[zZ]|[+-]\d{2}:?\d{2}$/.test(value)
+        ? new Date(value + 'Z')
+        : new Date(value)
   if (isNaN(d.getTime())) return ''
 
   const now = Date.now()
