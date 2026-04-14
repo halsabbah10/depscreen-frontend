@@ -1,23 +1,25 @@
 import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import {
-  ArrowLeft, ClipboardList, BarChart3, FileText,
-  ChevronRight, AlertTriangle, TrendingUp, TrendingDown, Minus,
+  ArrowLeft, ClipboardList, BarChart3, FileText, ClipboardCheck,
+  ChevronRight, AlertTriangle, TrendingUp, TrendingDown, Minus, Plus, Save, Target, Sparkles,
 } from 'lucide-react'
+import toast from 'react-hot-toast'
 import { dashboard } from '../api/client'
-import type { PatientSummary, ScreeningHistoryResponse, SymptomTrend, PatientDocument } from '../types/api'
+import type { PatientSummary, ScreeningHistoryResponse, SymptomTrend, PatientDocument, CarePlanResponse } from '../types/api'
 import { SEVERITY_COLORS, SYMPTOM_COLORS } from '../types/api'
 import { formatDate } from '../lib/localization'
 import { PageTransition, StaggerChildren, StaggerItem } from '../components/ui/PageTransition'
 import { BreathingCircle } from '../components/ui/BreathingCircle'
 import { EmptyState } from '../components/ui/EmptyState'
 
-type Tab = 'screenings' | 'trends' | 'documents'
+type Tab = 'screenings' | 'trends' | 'documents' | 'care-plan'
 
 const TABS: { id: Tab; label: string; icon: typeof ClipboardList }[] = [
   { id: 'screenings', label: 'Screenings', icon: ClipboardList },
   { id: 'trends', label: 'Trends', icon: BarChart3 },
   { id: 'documents', label: 'Documents', icon: FileText },
+  { id: 'care-plan', label: 'Care Plan', icon: ClipboardCheck },
 ]
 
 const SEVERITY_DOT: Record<string, string> = {
@@ -347,6 +349,372 @@ export function PatientDetailPage() {
           )}
         </>
       )}
+
+      {tab === 'care-plan' && patientId && <CarePlanTab patientId={patientId} />}
     </PageTransition>
+  )
+}
+
+// ── Care Plan Tab (clinician CRUD) ────────────────────────────────────────────
+
+interface Goal {
+  text: string
+  target_date?: string
+  status?: string
+}
+
+interface Intervention {
+  name: string
+  frequency?: string
+  instructions?: string
+}
+
+function CarePlanTab({ patientId }: { patientId: string }) {
+  const [plans, setPlans] = useState<CarePlanResponse[]>([])
+  const [loading, setLoading] = useState(true)
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [showCreate, setShowCreate] = useState(false)
+
+  // Active plan editing form state
+  const [title, setTitle] = useState('')
+  const [description, setDescription] = useState('')
+  const [goals, setGoals] = useState<Goal[]>([])
+  const [interventions, setInterventions] = useState<Intervention[]>([])
+  const [reviewDate, setReviewDate] = useState('')
+  const [saving, setSaving] = useState(false)
+
+  const reload = () => {
+    setLoading(true)
+    dashboard
+      .getPatientCarePlans(patientId)
+      .then(data => {
+        setPlans(data)
+      })
+      .catch(() => setPlans([]))
+      .finally(() => setLoading(false))
+  }
+
+  useEffect(reload, [patientId])
+
+  const startEditing = (cp: CarePlanResponse) => {
+    setEditingId(cp.id)
+    setShowCreate(false)
+    setTitle(cp.title)
+    setDescription(cp.description || '')
+    setGoals(
+      (cp.goals || []).map(g => ({
+        text: String(g.text ?? ''),
+        target_date: g.target_date ? String(g.target_date) : undefined,
+        status: g.status ? String(g.status) : undefined,
+      }))
+    )
+    setInterventions(
+      (cp.interventions || []).map(i => ({
+        name: String(i.name ?? ''),
+        frequency: i.frequency ? String(i.frequency) : undefined,
+        instructions: i.instructions ? String(i.instructions) : undefined,
+      }))
+    )
+    setReviewDate(cp.review_date || '')
+  }
+
+  const startCreating = () => {
+    setEditingId(null)
+    setShowCreate(true)
+    setTitle('')
+    setDescription('')
+    setGoals([])
+    setInterventions([])
+    setReviewDate('')
+  }
+
+  const cancelEdit = () => {
+    setEditingId(null)
+    setShowCreate(false)
+  }
+
+  const handleSave = async () => {
+    if (!title.trim()) {
+      toast.error('Title is required')
+      return
+    }
+    setSaving(true)
+    try {
+      if (editingId) {
+        await dashboard.updateCarePlan(editingId, {
+          title,
+          description: description || undefined,
+          goals,
+          interventions,
+          review_date: reviewDate || undefined,
+        })
+        toast.success('Care plan updated. Patient has been notified.')
+      } else {
+        await dashboard.createCarePlan({
+          patient_id: patientId,
+          title,
+          description: description || undefined,
+          goals,
+          interventions,
+          review_date: reviewDate || undefined,
+        })
+        toast.success('Care plan created')
+      }
+      cancelEdit()
+      reload()
+    } catch (err: unknown) {
+      const detail = err instanceof Object && 'detail' in err ? (err as { detail: string }).detail : null
+      toast.error(detail || 'Could not save care plan.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <BreathingCircle size="sm" label="Loading care plans..." />
+      </div>
+    )
+  }
+
+  const editing = editingId || showCreate
+
+  if (editing) {
+    return (
+      <div className="card-warm rounded-xl p-6 space-y-5">
+        <div className="flex items-center justify-between mb-1">
+          <h2 className="font-display text-xl text-foreground font-light">
+            {editingId ? 'Edit care plan' : 'New care plan'}
+          </h2>
+          <button onClick={cancelEdit} className="btn-ghost text-xs">
+            Cancel
+          </button>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium mb-1.5 font-body">Title</label>
+          <input
+            type="text"
+            className="input py-2.5"
+            placeholder="e.g. Behavioral Activation — Mild Depression"
+            value={title}
+            onChange={e => setTitle(e.target.value)}
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium mb-1.5 font-body">
+            Description <span className="text-muted-foreground font-normal">(optional)</span>
+          </label>
+          <textarea
+            className="input py-2.5 resize-none"
+            rows={3}
+            placeholder="Brief overview of the treatment approach..."
+            value={description}
+            onChange={e => setDescription(e.target.value)}
+          />
+        </div>
+
+        {/* Goals */}
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <label className="text-sm font-medium font-body flex items-center gap-1.5">
+              <Target className="w-3.5 h-3.5 text-primary" />
+              Goals
+            </label>
+            <button
+              type="button"
+              onClick={() => setGoals(g => [...g, { text: '', status: 'in_progress' }])}
+              className="text-xs text-primary hover:text-primary/80 inline-flex items-center gap-1 font-body"
+            >
+              <Plus className="w-3 h-3" /> Add goal
+            </button>
+          </div>
+          <div className="space-y-2">
+            {goals.length === 0 && (
+              <p className="text-xs text-muted-foreground italic font-body">No goals yet. Add one to get started.</p>
+            )}
+            {goals.map((g, i) => (
+              <div key={i} className="flex gap-2 items-start">
+                <textarea
+                  className="input py-2 flex-1 resize-none text-sm"
+                  rows={2}
+                  placeholder={`Goal ${i + 1}`}
+                  value={g.text}
+                  onChange={e => setGoals(gs => gs.map((x, j) => (j === i ? { ...x, text: e.target.value } : x)))}
+                />
+                <input
+                  type="date"
+                  className="input py-2 text-xs w-36"
+                  value={g.target_date || ''}
+                  onChange={e => setGoals(gs => gs.map((x, j) => (j === i ? { ...x, target_date: e.target.value } : x)))}
+                />
+                <button
+                  type="button"
+                  onClick={() => setGoals(gs => gs.filter((_, j) => j !== i))}
+                  className="text-muted-foreground hover:text-danger p-2"
+                  aria-label="Remove goal"
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Interventions */}
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <label className="text-sm font-medium font-body flex items-center gap-1.5">
+              <Sparkles className="w-3.5 h-3.5 text-primary" />
+              Interventions
+            </label>
+            <button
+              type="button"
+              onClick={() => setInterventions(ints => [...ints, { name: '', frequency: '', instructions: '' }])}
+              className="text-xs text-primary hover:text-primary/80 inline-flex items-center gap-1 font-body"
+            >
+              <Plus className="w-3 h-3" /> Add intervention
+            </button>
+          </div>
+          <div className="space-y-2">
+            {interventions.length === 0 && (
+              <p className="text-xs text-muted-foreground italic font-body">
+                No interventions yet. E.g. "Daily mood journaling", "Behavioral activation: 1 pleasant activity/day".
+              </p>
+            )}
+            {interventions.map((intr, i) => (
+              <div key={i} className="border border-border rounded-lg p-3 space-y-2">
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    className="input py-1.5 flex-1 text-sm"
+                    placeholder="Name (e.g. Behavioral activation)"
+                    value={intr.name}
+                    onChange={e =>
+                      setInterventions(ints => ints.map((x, j) => (j === i ? { ...x, name: e.target.value } : x)))
+                    }
+                  />
+                  <input
+                    type="text"
+                    className="input py-1.5 text-sm w-36"
+                    placeholder="Frequency"
+                    value={intr.frequency || ''}
+                    onChange={e =>
+                      setInterventions(ints => ints.map((x, j) => (j === i ? { ...x, frequency: e.target.value } : x)))
+                    }
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setInterventions(ints => ints.filter((_, j) => j !== i))}
+                    className="text-muted-foreground hover:text-danger p-1"
+                    aria-label="Remove intervention"
+                  >
+                    ×
+                  </button>
+                </div>
+                <textarea
+                  className="input py-1.5 text-sm resize-none"
+                  rows={2}
+                  placeholder="Instructions for the patient..."
+                  value={intr.instructions || ''}
+                  onChange={e =>
+                    setInterventions(ints =>
+                      ints.map((x, j) => (j === i ? { ...x, instructions: e.target.value } : x))
+                    )
+                  }
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium mb-1.5 font-body">Next review date</label>
+          <input
+            type="date"
+            className="input py-2.5 w-48"
+            value={reviewDate}
+            onChange={e => setReviewDate(e.target.value)}
+          />
+        </div>
+
+        <div className="flex justify-end pt-2">
+          <button onClick={handleSave} disabled={saving || !title.trim()} className="btn-primary text-sm gap-2">
+            <Save className="w-3.5 h-3.5" />
+            {saving ? 'Saving...' : editingId ? 'Update & notify patient' : 'Create care plan'}
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h2 className="font-display text-lg text-foreground font-light">Care plans</h2>
+        <button onClick={startCreating} className="btn-primary text-sm gap-2">
+          <Plus className="w-3.5 h-3.5" />
+          New care plan
+        </button>
+      </div>
+
+      {plans.length === 0 ? (
+        <div className="card-warm rounded-xl">
+          <EmptyState
+            icon={<ClipboardCheck className="w-5 h-5 text-muted-foreground/50" />}
+            title="No care plan yet"
+            description="Create a care plan to guide this patient's treatment with structured goals and interventions."
+          />
+        </div>
+      ) : (
+        <StaggerChildren className="space-y-3">
+          {plans.map(cp => (
+            <StaggerItem key={cp.id}>
+              <div className="card-warm rounded-xl p-5">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <h3 className="font-medium font-body text-foreground">{cp.title}</h3>
+                      <span
+                        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium ${
+                          cp.status === 'active'
+                            ? 'bg-primary/10 text-primary'
+                            : cp.status === 'review_needed'
+                            ? 'bg-amber-100 text-amber-700'
+                            : cp.status === 'completed'
+                            ? 'bg-emerald-100 text-emerald-700'
+                            : 'bg-slate-100 text-slate-600'
+                        }`}
+                      >
+                        {cp.status.replace('_', ' ')}
+                      </span>
+                    </div>
+                    {cp.description && (
+                      <p className="text-sm text-muted-foreground font-body mb-2 line-clamp-2">{cp.description}</p>
+                    )}
+                    <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground font-body">
+                      <span>{(cp.goals || []).length} goal(s)</span>
+                      <span>·</span>
+                      <span>{(cp.interventions || []).length} intervention(s)</span>
+                      {cp.review_date && (
+                        <>
+                          <span>·</span>
+                          <span>Review: {formatDate(cp.review_date)}</span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                  <button onClick={() => startEditing(cp)} className="btn-ghost text-xs">
+                    Edit
+                  </button>
+                </div>
+              </div>
+            </StaggerItem>
+          ))}
+        </StaggerChildren>
+      )}
+    </div>
   )
 }
