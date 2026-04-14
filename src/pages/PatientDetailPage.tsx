@@ -73,6 +73,7 @@ export function PatientDetailPage() {
   const [documents, setDocuments] = useState<PatientDocument[]>([])
   const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState<Tab>('profile')
+  const [downloadingSummary, setDownloadingSummary] = useState(false)
 
   const patient = patients.find(p => p.id === patientId)
 
@@ -126,18 +127,22 @@ export function PatientDetailPage() {
         {patientId && (
           <button
             onClick={async () => {
+              setDownloadingSummary(true)
               try {
                 await dashboard.downloadPatientSummaryPdf(patientId)
               } catch (err) {
                 const detail = err instanceof Object && 'detail' in err ? (err as { detail: string }).detail : null
                 toast.error(detail || 'Could not download summary.')
+              } finally {
+                setDownloadingSummary(false)
               }
             }}
-            className="btn-ghost text-xs"
+            disabled={downloadingSummary}
+            className="btn-ghost text-xs disabled:opacity-60 disabled:cursor-not-allowed"
             title="Download clinical summary as PDF"
           >
             <Download className="w-3.5 h-3.5" />
-            Clinical summary PDF
+            {downloadingSummary ? 'Preparing…' : 'Clinical summary PDF'}
           </button>
         )}
       </div>

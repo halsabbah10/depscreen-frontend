@@ -31,6 +31,7 @@ import { MyAppointmentsPage } from './pages/MyAppointmentsPage'
 import { MyCarePlanPage } from './pages/MyCarePlanPage'
 import { AppointmentsPage } from './pages/AppointmentsPage'
 import { MessagesPage } from './pages/MessagesPage'
+import { NotFoundPage } from './pages/NotFoundPage'
 
 function AppRoutes() {
   const { isAuthenticated, isPatient, user } = useAuth()
@@ -103,12 +104,13 @@ function AppRoutes() {
         {/* Shared */}
         <Route path="/results/:screeningId" element={<ResultPage />} />
         <Route path="/profile" element={<ProfilePage />} />
+
+        {/* 404 — authenticated: show the warm NotFoundPage inside Layout */}
+        <Route path="*" element={<NotFoundPage />} />
       </Route>
 
-      {/* Default */}
-      <Route path="*" element={
-        <Navigate to={isAuthenticated ? (isPatient ? patientHome : '/dashboard') : '/login'} replace />
-      } />
+      {/* Unauthenticated catch-all — bounce to login */}
+      <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>
   )
 }

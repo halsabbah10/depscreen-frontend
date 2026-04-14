@@ -15,6 +15,39 @@ import { BreathingDot } from '../components/ui/BreathingCircle'
 
 type Tab = 'login' | 'register'
 
+type FieldKey = 'email' | 'password' | 'fullName' | 'inviteCode'
+type FieldErrors = Partial<Record<FieldKey, string>>
+
+// Lightweight, blur-driven validation. Only show a field's error after the
+// user has touched it once, so the form doesn't scream at them on first render.
+function validate(
+  tab: Tab,
+  role: 'patient' | 'clinician',
+  values: { email: string; password: string; fullName: string; inviteCode: string },
+): FieldErrors {
+  const errors: FieldErrors = {}
+  const email = values.email.trim()
+  if (!email) errors.email = 'Email is required.'
+  else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errors.email = "This doesn't look like a valid email address."
+
+  if (!values.password) errors.password = 'Password is required.'
+  else if (tab === 'register' && values.password.length < 8) {
+    errors.password = 'Please choose a password with at least 8 characters.'
+  }
+
+  if (tab === 'register') {
+    if (!values.fullName.trim()) errors.fullName = 'We need a name to put on your record.'
+    else if (values.fullName.trim().length < 2) errors.fullName = 'That name looks a bit short.'
+
+    if (role === 'patient' && values.inviteCode) {
+      if (!/^[A-Z0-9]{6}$/.test(values.inviteCode)) {
+        errors.inviteCode = 'Clinician codes are exactly 6 letters and numbers.'
+      }
+    }
+  }
+  return errors
+}
+
 export function LoginPage() {
   const { login, register } = useAuth()
   const [tab, setTab] = useState<Tab>('login')
@@ -28,8 +61,18 @@ export function LoginPage() {
   const [role, setRole] = useState<'patient' | 'clinician'>('patient')
   const [inviteCode, setInviteCode] = useState('')
 
+  const [touched, setTouched] = useState<Partial<Record<FieldKey, boolean>>>({})
+  const fieldErrors = validate(tab, role, { email, password, fullName, inviteCode })
+  const showError = (k: FieldKey) => (touched[k] ? fieldErrors[k] : undefined)
+  const markTouched = (k: FieldKey) => setTouched(prev => ({ ...prev, [k]: true }))
+  const hasErrors = Object.keys(fieldErrors).length > 0
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    // Mark everything touched so errors surface on submit
+    setTouched({ email: true, password: true, fullName: true, inviteCode: true })
+    if (hasErrors) return
+
     setError('')
     setLoading(true)
     try {
@@ -201,10 +244,20 @@ export function LoginPage() {
                     </label>
                     <input
                       id="fullName"
-                      type="text" required className="input py-3"
+                      type="text" required
+                      className={`input py-3 ${showError('fullName') ? 'border-clay focus:ring-clay/30' : ''}`}
                       placeholder="Your full name"
-                      value={fullName} onChange={e => setFullName(e.target.value)}
+                      value={fullName}
+                      onChange={e => setFullName(e.target.value)}
+                      onBlur={() => markTouched('fullName')}
+                      aria-invalid={!!showError('fullName')}
+                      aria-describedby={showError('fullName') ? 'fullName-error' : undefined}
                     />
+                    {showError('fullName') && (
+                      <p id="fullName-error" className="text-xs text-clay mt-1.5 font-body">
+                        {showError('fullName')}
+                      </p>
+                    )}
                   </div>
 
                   <div>
@@ -235,10 +288,20 @@ export function LoginPage() {
                 </label>
                 <input
                   id="email"
-                  type="email" required className="input py-3"
+                  type="email" required
+                  className={`input py-3 ${showError('email') ? 'border-clay focus:ring-clay/30' : ''}`}
                   placeholder="you@email.com"
-                  value={email} onChange={e => setEmail(e.target.value)}
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  onBlur={() => markTouched('email')}
+                  aria-invalid={!!showError('email')}
+                  aria-describedby={showError('email') ? 'email-error' : undefined}
                 />
+                {showError('email') && (
+                  <p id="email-error" className="text-xs text-clay mt-1.5 font-body">
+                    {showError('email')}
+                  </p>
+                )}
               </div>
 
               <div>
@@ -247,11 +310,21 @@ export function LoginPage() {
                 </label>
                 <input
                   id="password"
-                  type="password" required className="input py-3"
+                  type="password" required
+                  className={`input py-3 ${showError('password') ? 'border-clay focus:ring-clay/30' : ''}`}
                   placeholder={tab === 'register' ? 'Min 8 characters' : '••••••••'}
                   minLength={tab === 'register' ? 8 : undefined}
-                  value={password} onChange={e => setPassword(e.target.value)}
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  onBlur={() => markTouched('password')}
+                  aria-invalid={!!showError('password')}
+                  aria-describedby={showError('password') ? 'password-error' : undefined}
                 />
+                {showError('password') && (
+                  <p id="password-error" className="text-xs text-clay mt-1.5 font-body">
+                    {showError('password')}
+                  </p>
+                )}
               </div>
 
               {tab === 'register' && role === 'patient' && (
@@ -262,14 +335,27 @@ export function LoginPage() {
                   </label>
                   <input
                     id="inviteCode"
-                    type="text" className="input py-3 font-mono tracking-[0.25em] uppercase text-center"
+                    type="text"
+                    className={`input py-3 font-mono tracking-[0.25em] uppercase text-center ${
+                      showError('inviteCode') ? 'border-clay focus:ring-clay/30' : ''
+                    }`}
                     placeholder="ABC123"
                     maxLength={6}
-                    value={inviteCode} onChange={e => setInviteCode(e.target.value.toUpperCase())}
+                    value={inviteCode}
+                    onChange={e => setInviteCode(e.target.value.toUpperCase())}
+                    onBlur={() => markTouched('inviteCode')}
+                    aria-invalid={!!showError('inviteCode')}
+                    aria-describedby={showError('inviteCode') ? 'inviteCode-error' : 'inviteCode-help'}
                   />
-                  <p className="text-xs text-muted-foreground mt-2 font-body leading-relaxed">
-                    Your therapist will provide this code to link your accounts.
-                  </p>
+                  {showError('inviteCode') ? (
+                    <p id="inviteCode-error" className="text-xs text-clay mt-1.5 font-body">
+                      {showError('inviteCode')}
+                    </p>
+                  ) : (
+                    <p id="inviteCode-help" className="text-xs text-muted-foreground mt-2 font-body leading-relaxed">
+                      Your therapist will provide this code to link your accounts.
+                    </p>
+                  )}
                 </div>
               )}
 
