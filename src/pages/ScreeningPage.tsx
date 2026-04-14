@@ -183,9 +183,13 @@ export function ScreeningPage() {
     return (
       <PageTransition className="max-w-2xl mx-auto px-4 py-16">
         <div className="flex flex-col items-center justify-center min-h-[40vh] gap-6">
-          <BreathingCircle size="lg" label="Taking a moment to understand your words..." />
+          <BreathingCircle
+            size="xl"
+            variant="therapeutic"
+            label="Taking a moment to understand your words"
+          />
           <p className="text-sm text-muted-foreground font-body text-center max-w-xs leading-relaxed">
-            Breathe gently if you need to. This will only take a moment.
+            If you'd like, breathe along with the circle while we prepare your results.
           </p>
         </div>
       </PageTransition>
