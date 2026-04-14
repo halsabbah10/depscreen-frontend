@@ -474,6 +474,16 @@ export const patient = {
     return del('/patient/account')
   },
 
+  // Patient-facing appointments & care plan
+  async getMyAppointments(status?: string): Promise<AppointmentResponse[]> {
+    const query = status ? `?status=${encodeURIComponent(status)}` : ''
+    return get<AppointmentResponse[]>(`/patient/appointments${query}`)
+  },
+
+  async getMyCarePlan(): Promise<CarePlanResponse | null> {
+    return get<CarePlanResponse | null>('/patient/care-plan')
+  },
+
   // Notifications
   async getNotifications(all?: boolean): Promise<NotificationResponse[]> {
     const query = all ? '?all=true' : ''

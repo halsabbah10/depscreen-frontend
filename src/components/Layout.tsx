@@ -11,7 +11,7 @@ import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
 import {
   Brain, ClipboardList, BarChart3, Users, LayoutDashboard,
-  User, LogOut, AlertTriangle, Bell, MessageCircle,
+  User, LogOut, AlertTriangle, Bell, MessageCircle, Calendar, ClipboardCheck,
 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { ErrorBoundary } from './ui/ErrorBoundary'
@@ -19,12 +19,15 @@ import { ErrorBoundary } from './ui/ErrorBoundary'
 const PATIENT_NAV = [
   { path: '/screening', label: 'New Screening', icon: ClipboardList },
   { path: '/history', label: 'History', icon: BarChart3 },
+  { path: '/appointments', label: 'Appointments', icon: Calendar },
+  { path: '/care-plan', label: 'Care Plan', icon: ClipboardCheck },
   { path: '/chat', label: 'Chat', icon: MessageCircle },
 ]
 
 const CLINICIAN_NAV = [
   { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { path: '/patients', label: 'Patients', icon: Users },
+  { path: '/clinician-appointments', label: 'Appointments', icon: Calendar },
 ]
 
 export function Layout() {

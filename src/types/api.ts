@@ -345,15 +345,17 @@ export interface AppointmentCreate {
 
 export interface AppointmentResponse {
   id: string
-  patient_id: string
+  patient_id?: string
+  patient_name?: string
   clinician_id: string
+  clinician_name?: string
   scheduled_at: string
   duration_minutes: number
   appointment_type: string
   status: string
   notes: string | null
   location: string | null
-  created_at: string
+  created_at?: string
 }
 
 // ── Notifications ────────────────────────────────────────────────────────────
@@ -382,8 +384,10 @@ export interface CarePlanCreate {
 
 export interface CarePlanResponse {
   id: string
-  patient_id: string
+  patient_id?: string
+  patient_name?: string
   clinician_id: string
+  clinician_name?: string
   title: string
   description: string | null
   template_name: string | null

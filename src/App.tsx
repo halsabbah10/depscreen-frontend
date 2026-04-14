@@ -27,6 +27,9 @@ import { DashboardPage } from './pages/DashboardPage'
 import { PatientListPage } from './pages/PatientListPage'
 import { PatientDetailPage } from './pages/PatientDetailPage'
 import { ProfilePage } from './pages/ProfilePage'
+import { MyAppointmentsPage } from './pages/MyAppointmentsPage'
+import { MyCarePlanPage } from './pages/MyCarePlanPage'
+import { AppointmentsPage } from './pages/AppointmentsPage'
 
 function AppRoutes() {
   const { isAuthenticated, isPatient, user } = useAuth()
@@ -78,6 +81,12 @@ function AppRoutes() {
         <Route path="/notifications" element={
           <ProtectedRoute roles={['patient']}><NotificationsPage /></ProtectedRoute>
         } />
+        <Route path="/appointments" element={
+          <ProtectedRoute roles={['patient']}><MyAppointmentsPage /></ProtectedRoute>
+        } />
+        <Route path="/care-plan" element={
+          <ProtectedRoute roles={['patient']}><MyCarePlanPage /></ProtectedRoute>
+        } />
 
         {/* Clinician */}
         <Route path="/dashboard" element={
@@ -88,6 +97,9 @@ function AppRoutes() {
         } />
         <Route path="/patients/:patientId" element={
           <ProtectedRoute roles={['clinician', 'admin']}><PatientDetailPage /></ProtectedRoute>
+        } />
+        <Route path="/clinician-appointments" element={
+          <ProtectedRoute roles={['clinician', 'admin']}><AppointmentsPage /></ProtectedRoute>
         } />
 
         {/* Shared */}
