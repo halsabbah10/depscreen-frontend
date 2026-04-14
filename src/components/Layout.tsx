@@ -99,12 +99,14 @@ export function Layout() {
                   key={item.path}
                   to={item.path}
                   className={`
-                    flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm transition-colors
+                    flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md text-sm transition-colors
+                    min-w-[44px] min-h-[40px] sm:min-w-0 sm:min-h-0
                     ${isActive
                       ? 'bg-white/15 text-white font-medium'
                       : 'text-white/60 hover:text-white hover:bg-white/10'}
                   `}
                   aria-current={isActive ? 'page' : undefined}
+                  aria-label={item.label}
                 >
                   <item.icon className="w-4 h-4" aria-hidden="true" />
                   <span className="hidden sm:inline">{item.label}</span>
@@ -117,7 +119,7 @@ export function Layout() {
             {/* Notifications bell */}
             <Link
               to="/notifications"
-              className="p-1.5 rounded-md text-white/60 hover:text-white hover:bg-white/10 transition-colors relative"
+              className="p-1.5 rounded-md text-white/60 hover:text-white hover:bg-white/10 transition-colors relative flex items-center justify-center min-w-[44px] min-h-[40px] sm:min-w-0 sm:min-h-0"
               aria-label="Notifications"
             >
               <Bell className="w-4 h-4" />
@@ -146,7 +148,7 @@ export function Layout() {
             {/* Logout */}
             <button
               onClick={handleLogout}
-              className="p-1.5 rounded-md text-white/50 hover:text-white hover:bg-white/10 transition-colors"
+              className="p-1.5 rounded-md text-white/50 hover:text-white hover:bg-white/10 transition-colors flex items-center justify-center min-w-[44px] min-h-[40px] sm:min-w-0 sm:min-h-0"
               title="Sign out"
               aria-label="Sign out"
             >
