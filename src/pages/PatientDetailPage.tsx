@@ -83,7 +83,10 @@ export function PatientDetailPage() {
       dashboard.getPatientTrends(patientId).then(setTrends).catch(() => null),
       dashboard.getPatientDocuments(patientId).then(setDocuments).catch(() => []),
     ])
-      .catch(() => {})
+      .catch((err: unknown) => {
+        const detail = err instanceof Object && 'detail' in err ? (err as { detail: string }).detail : null
+        toast.error(detail || 'Could not load patient details.')
+      })
       .finally(() => setLoading(false))
   }, [patientId])
 

@@ -52,16 +52,30 @@ export function ProfilePage() {
   // New medication form
   const [newMedName, setNewMedName] = useState('')
   const [newMedDosage, setNewMedDosage] = useState('')
-  const [newMedFreq] = useState('daily')
+  const [newMedFreq, setNewMedFreq] = useState('daily')
 
   // New allergy form
   const [newAllergen, setNewAllergen] = useState('')
-  const [newAllergySeverity] = useState('moderate')
+  const [newAllergySeverity, setNewAllergySeverity] = useState('moderate')
 
   // New contact form
   const [newContactName, setNewContactName] = useState('')
   const [newContactPhone, setNewContactPhone] = useState('')
-  const [newContactRelation] = useState('parent')
+  const [newContactRelation, setNewContactRelation] = useState('parent')
+
+  // Pre-fill form state from the loaded user profile (returning users see
+  // their saved data, not blank fields). Strip the +973 prefix so the UI
+  // prefix badge doesn't double it up.
+  useEffect(() => {
+    if (!user) return
+    setFullName(user.full_name || '')
+    setPhone(user.phone ? user.phone.replace(/^\+973/, '') : '')
+    setDateOfBirth(user.date_of_birth || '')
+    setGender(user.gender || '')
+    setNationality(user.nationality || '')
+    setCprNumber(user.cpr_number || '')
+    setBloodType(user.blood_type || '')
+  }, [user])
 
   useEffect(() => {
     if (tab === 'medical' && isPatient) {
@@ -357,9 +371,14 @@ export function ProfilePage() {
                             </div>
                             <button
                               onClick={async () => {
-                                await patientApi.deleteMedication(m.id)
-                                setMedications(prev => prev.filter(x => x.id !== m.id))
-                                toast.success('Medication removed.')
+                                if (!confirm(`Remove medication "${m.name}"?`)) return
+                                try {
+                                  await patientApi.deleteMedication(m.id)
+                                  setMedications(prev => prev.filter(x => x.id !== m.id))
+                                  toast.success('Medication removed.')
+                                } catch {
+                                  toast.error('Could not remove medication.')
+                                }
                               }}
                               className="text-xs text-muted-foreground hover:text-destructive transition-colors font-body"
                             >
@@ -369,10 +388,16 @@ export function ProfilePage() {
                         ))}
                       </div>
                     )}
-                    <div className="flex gap-2 mt-3">
-                      <input className="input flex-1" placeholder="Medication name" value={newMedName} onChange={e => setNewMedName(e.target.value)} />
-                      <input className="input w-20" placeholder="Dosage" value={newMedDosage} onChange={e => setNewMedDosage(e.target.value)} />
-                      <button onClick={handleAddMedication} disabled={!newMedName.trim()} className="btn-outline text-xs">Add</button>
+                    <div className="grid grid-cols-12 gap-2 mt-3">
+                      <input className="input col-span-5" placeholder="Medication name" value={newMedName} onChange={e => setNewMedName(e.target.value)} />
+                      <input className="input col-span-3" placeholder="Dosage (e.g. 50mg)" value={newMedDosage} onChange={e => setNewMedDosage(e.target.value)} />
+                      <select className="input col-span-2" value={newMedFreq} onChange={e => setNewMedFreq(e.target.value)}>
+                        <option value="daily">Daily</option>
+                        <option value="twice-daily">Twice daily</option>
+                        <option value="weekly">Weekly</option>
+                        <option value="as-needed">As needed</option>
+                      </select>
+                      <button onClick={handleAddMedication} disabled={!newMedName.trim()} className="btn-outline text-xs col-span-2">Add</button>
                     </div>
                   </div>
 
@@ -399,9 +424,14 @@ export function ProfilePage() {
                             </div>
                             <button
                               onClick={async () => {
-                                await patientApi.deleteAllergy(a.id)
-                                setAllergies(prev => prev.filter(x => x.id !== a.id))
-                                toast.success('Allergy removed.')
+                                if (!confirm(`Remove allergy "${a.allergen}"?`)) return
+                                try {
+                                  await patientApi.deleteAllergy(a.id)
+                                  setAllergies(prev => prev.filter(x => x.id !== a.id))
+                                  toast.success('Allergy removed.')
+                                } catch {
+                                  toast.error('Could not remove allergy.')
+                                }
                               }}
                               className="text-xs text-muted-foreground hover:text-destructive transition-colors font-body"
                             >
@@ -411,9 +441,15 @@ export function ProfilePage() {
                         ))}
                       </div>
                     )}
-                    <div className="flex gap-2 mt-3">
-                      <input className="input flex-1" placeholder="Allergen" value={newAllergen} onChange={e => setNewAllergen(e.target.value)} />
-                      <button onClick={handleAddAllergy} disabled={!newAllergen.trim()} className="btn-outline text-xs">Add</button>
+                    <div className="grid grid-cols-12 gap-2 mt-3">
+                      <input className="input col-span-7" placeholder="Allergen (e.g. Penicillin)" value={newAllergen} onChange={e => setNewAllergen(e.target.value)} />
+                      <select className="input col-span-3" value={newAllergySeverity} onChange={e => setNewAllergySeverity(e.target.value)}>
+                        <option value="mild">Mild</option>
+                        <option value="moderate">Moderate</option>
+                        <option value="severe">Severe</option>
+                        <option value="life_threatening">Life-threatening</option>
+                      </select>
+                      <button onClick={handleAddAllergy} disabled={!newAllergen.trim()} className="btn-outline text-xs col-span-2">Add</button>
                     </div>
                   </div>
 
@@ -471,9 +507,14 @@ export function ProfilePage() {
                       </div>
                       <button
                         onClick={async () => {
-                          await patientApi.removeEmergencyContact(c.id)
-                          setContacts(prev => prev.filter(x => x.id !== c.id))
-                          toast.success('Contact removed.')
+                          if (!confirm(`Remove emergency contact "${c.contact_name}"?`)) return
+                          try {
+                            await patientApi.removeEmergencyContact(c.id)
+                            setContacts(prev => prev.filter(x => x.id !== c.id))
+                            toast.success('Contact removed.')
+                          } catch {
+                            toast.error('Could not remove contact.')
+                          }
                         }}
                         className="text-xs text-muted-foreground hover:text-destructive transition-colors font-body"
                       >
@@ -484,10 +525,18 @@ export function ProfilePage() {
                 </div>
               )}
 
-              <div className="flex gap-2 mt-3">
-                <input className="input flex-1" placeholder="Contact name" value={newContactName} onChange={e => setNewContactName(e.target.value)} />
-                <input className="input w-28" placeholder="+973 XXXX" value={newContactPhone} onChange={e => setNewContactPhone(e.target.value)} />
-                <button onClick={handleAddContact} disabled={!newContactName.trim() || !newContactPhone.trim()} className="btn-outline text-xs">Add</button>
+              <div className="grid grid-cols-12 gap-2 mt-3">
+                <input className="input col-span-5" placeholder="Contact name" value={newContactName} onChange={e => setNewContactName(e.target.value)} />
+                <input className="input col-span-3" placeholder="+973 XXXX" value={newContactPhone} onChange={e => setNewContactPhone(e.target.value)} />
+                <select className="input col-span-2" value={newContactRelation} onChange={e => setNewContactRelation(e.target.value)}>
+                  <option value="parent">Parent</option>
+                  <option value="spouse">Spouse</option>
+                  <option value="sibling">Sibling</option>
+                  <option value="friend">Friend</option>
+                  <option value="therapist">Therapist</option>
+                  <option value="other">Other</option>
+                </select>
+                <button onClick={handleAddContact} disabled={!newContactName.trim() || !newContactPhone.trim()} className="btn-outline text-xs col-span-2">Add</button>
               </div>
             </div>
           )}
@@ -533,10 +582,14 @@ export function ProfilePage() {
                     </p>
                     <button
                       onClick={async () => {
-                        if (confirm('Are you sure you want to deactivate your account? This action cannot be easily undone.')) {
+                        if (!confirm('Are you sure you want to deactivate your account? This action cannot be easily undone.')) return
+                        try {
                           await patientApi.deactivateAccount()
                           toast.success('Account deactivated.')
                           logout()
+                        } catch (err: unknown) {
+                          const detail = err instanceof Object && 'detail' in err ? (err as { detail: string }).detail : null
+                          toast.error(detail || 'Could not deactivate account. Please try again.')
                         }
                       }}
                       className="btn-destructive w-full"

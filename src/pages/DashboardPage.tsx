@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Users, AlertTriangle, ChevronRight, ArrowRight } from 'lucide-react'
+import toast from 'react-hot-toast'
 import { dashboard } from '../api/client'
 import type { DashboardStats, ScreeningHistoryResponse } from '../types/api'
 import { SEVERITY_COLORS } from '../types/api'
@@ -27,7 +28,10 @@ export function DashboardPage() {
       dashboard.getStats().then(setStats),
       dashboard.getAllScreenings(1, 10, undefined, filter === 'flagged').then(setScreenings),
     ])
-      .catch(() => {})
+      .catch((err: unknown) => {
+        const detail = err instanceof Object && 'detail' in err ? (err as { detail: string }).detail : null
+        toast.error(detail || 'Could not load dashboard. Please refresh.')
+      })
       .finally(() => setLoading(false))
   }, [filter])
 

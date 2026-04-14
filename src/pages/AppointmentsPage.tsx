@@ -262,8 +262,9 @@ function CreateAppointmentModal({ patients, onClose, onCreated }: CreateModalPro
     }
     setSaving(true)
     try {
-      // Combine date + time into ISO string
-      const iso = `${date}T${time}:00`
+      // Convert local date+time to UTC ISO so backend stores wall-clock-correct.
+      // (The clinician's browser is the source of truth for the local time they picked.)
+      const iso = new Date(`${date}T${time}:00`).toISOString()
       await dashboardApi.createAppointment({
         patient_id: patientId,
         scheduled_at: iso,

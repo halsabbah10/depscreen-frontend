@@ -160,10 +160,16 @@ export const auth = {
   },
 
   async linkToClinician(code: string): Promise<{ status: string; clinician_name: string }> {
-    return post(`/auth/link?clinician_code=${encodeURIComponent(code)}`)
+    return post('/auth/link', { clinician_code: code })
   },
 
-  logout() {
+  async logout() {
+    // Fire-and-forget — even if the server call fails, we always clear local tokens.
+    try {
+      await post('/auth/logout', {})
+    } catch {
+      /* ignore */
+    }
     clearTokens()
   },
 }
@@ -369,7 +375,7 @@ export const dashboard = {
   },
 
   async updateNotes(screeningId: string, notes: string): Promise<{ status: string }> {
-    return put(`/dashboard/screenings/${screeningId}/notes?notes=${encodeURIComponent(notes)}`)
+    return put(`/dashboard/screenings/${screeningId}/notes`, { notes })
   },
 
   async updateTriage(screeningId: string, status: string): Promise<{ status: string }> {
@@ -395,8 +401,8 @@ export const dashboard = {
     return post<AppointmentResponse>('/dashboard/appointments', data)
   },
 
-  async updateAppointmentStatus(id: string, status: string): Promise<void> {
-    return patch(`/dashboard/appointments/${id}`, { status })
+  async updateAppointmentStatus(id: string, status: string): Promise<AppointmentResponse> {
+    return patchJson<AppointmentResponse>(`/dashboard/appointments/${id}/status`, { status })
   },
 
   async deleteAppointment(id: string): Promise<void> {
@@ -417,7 +423,7 @@ export const dashboard = {
   },
 
   async getCarePlanTemplates(): Promise<Record<string, unknown>[]> {
-    return get<Record<string, unknown>[]>('/dashboard/care-plans/templates')
+    return get<Record<string, unknown>[]>('/dashboard/care-plan-templates')
   },
 
   // Diagnoses
@@ -531,6 +537,10 @@ export const patient = {
 
   async addAllergy(data: AllergyCreate): Promise<AllergyResponse> {
     return post<AllergyResponse>('/patient/allergies', data)
+  },
+
+  async updateAllergy(id: string, data: AllergyCreate): Promise<AllergyResponse> {
+    return put<AllergyResponse>(`/patient/allergies/${id}`, data)
   },
 
   async deleteAllergy(id: string): Promise<void> {
