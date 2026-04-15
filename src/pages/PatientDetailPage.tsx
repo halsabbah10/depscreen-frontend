@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
+import { motion } from 'framer-motion'
 import {
   ArrowLeft, ClipboardList, BarChart3, FileText, ClipboardCheck, UserCircle2,
   ChevronRight, AlertTriangle, TrendingUp, TrendingDown, Minus, Plus, Save, Target, Sparkles,
-  Phone, Pill, Activity, Heart, Calendar, Pencil, Trash2, X, Download,
+  Phone, Pill, Activity, Heart, Calendar, Pencil, Trash2, X, Download, Bell,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { dashboard, terminology } from '../api/client'
@@ -74,6 +75,7 @@ export function PatientDetailPage() {
   const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState<Tab>('profile')
   const [downloadingSummary, setDownloadingSummary] = useState(false)
+  const [notifyOpen, setNotifyOpen] = useState(false)
 
   const patient = patients.find(p => p.id === patientId)
 
@@ -115,8 +117,8 @@ export function PatientDetailPage() {
 
   return (
     <PageTransition className="max-w-4xl mx-auto space-y-6">
-      {/* Back button + clinical summary download */}
-      <div className="flex items-center justify-between">
+      {/* Back button + clinical summary download + send notification */}
+      <div className="flex items-center justify-between gap-3 flex-wrap">
         <Link
           to="/patients"
           className="inline-flex items-center gap-1.5 text-sm font-body text-muted-foreground hover:text-foreground transition-colors"
@@ -125,25 +127,35 @@ export function PatientDetailPage() {
           Back to Patients
         </Link>
         {patientId && (
-          <button
-            onClick={async () => {
-              setDownloadingSummary(true)
-              try {
-                await dashboard.downloadPatientSummaryPdf(patientId)
-              } catch (err) {
-                const detail = err instanceof Object && 'detail' in err ? (err as { detail: string }).detail : null
-                toast.error(detail || 'Could not download summary.')
-              } finally {
-                setDownloadingSummary(false)
-              }
-            }}
-            disabled={downloadingSummary}
-            className="btn-ghost text-xs disabled:opacity-60 disabled:cursor-not-allowed"
-            title="Download clinical summary as PDF"
-          >
-            <Download className="w-3.5 h-3.5" />
-            {downloadingSummary ? 'Preparing…' : 'Clinical summary PDF'}
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setNotifyOpen(true)}
+              className="btn-ghost text-xs"
+              title="Send a notification the patient will see in their inbox"
+            >
+              <Bell className="w-3.5 h-3.5" />
+              Send notification
+            </button>
+            <button
+              onClick={async () => {
+                setDownloadingSummary(true)
+                try {
+                  await dashboard.downloadPatientSummaryPdf(patientId)
+                } catch (err) {
+                  const detail = err instanceof Object && 'detail' in err ? (err as { detail: string }).detail : null
+                  toast.error(detail || 'Could not download summary.')
+                } finally {
+                  setDownloadingSummary(false)
+                }
+              }}
+              disabled={downloadingSummary}
+              className="btn-ghost text-xs disabled:opacity-60 disabled:cursor-not-allowed"
+              title="Download clinical summary as PDF"
+            >
+              <Download className="w-3.5 h-3.5" />
+              {downloadingSummary ? 'Preparing…' : 'Clinical summary PDF'}
+            </button>
+          </div>
         )}
       </div>
 
@@ -420,6 +432,16 @@ export function PatientDetailPage() {
       {tab === 'messages' && patientId && <MessagesTab patientId={patientId} />}
 
       </div>
+
+      {/* Send-notification composer. Mounts only when the clinician
+          opens it, so the form state resets on each open. */}
+      {notifyOpen && patientId && (
+        <NotificationComposerModal
+          patientId={patientId}
+          patientName={patientName}
+          onClose={() => setNotifyOpen(false)}
+        />
+      )}
     </PageTransition>
   )
 }
@@ -1873,5 +1895,218 @@ function DiagnosesSection({ patientId }: { patientId: string }) {
         </div>
       )}
     </Section>
+  )
+}
+
+// ── Notification Composer Modal ─────────────────────────────────────────────
+// Ad-hoc notification sender. Wraps the POST /dashboard/patients/{id}/notify
+// endpoint in a small dialog so clinicians can push a one-off note into the
+// patient's inbox without opening a full DM thread.
+
+const NOTIFICATION_TYPES: { value: string; label: string; hint: string }[] = [
+  { value: "new_message", label: "General note", hint: "Shows with a message icon in the inbox" },
+  { value: "appointment_reminder", label: "Appointment reminder", hint: "Calendar-themed; link to /appointments works well" },
+  { value: "care_plan_updated", label: "Care plan update", hint: "Clipboard-themed; link to /care-plan works well" },
+  { value: "document_uploaded", label: "Document note", hint: "Document-themed" },
+]
+
+const NOTIFICATION_LINK_PRESETS: { value: string; label: string }[] = [
+  { value: "", label: "No link" },
+  { value: "/screening", label: "Open screening" },
+  { value: "/appointments", label: "Open appointments" },
+  { value: "/care-plan", label: "Open care plan" },
+  { value: "/messages", label: "Open messages" },
+  { value: "/profile", label: "Open profile" },
+]
+
+function NotificationComposerModal({
+  patientId,
+  patientName,
+  onClose,
+}: {
+  patientId: string
+  patientName: string
+  onClose: () => void
+}) {
+  const [title, setTitle] = useState("")
+  const [message, setMessage] = useState("")
+  const [notificationType, setNotificationType] = useState("new_message")
+  const [link, setLink] = useState("")
+  const [submitting, setSubmitting] = useState(false)
+  const firstFieldRef = useRef<HTMLInputElement>(null)
+
+  // Escape closes; body scroll locked; initial focus on the title field.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && !submitting) onClose()
+    }
+    window.addEventListener("keydown", onKey)
+    const focusTimer = setTimeout(() => firstFieldRef.current?.focus(), 120)
+    const prevOverflow = document.body.style.overflow
+    document.body.style.overflow = "hidden"
+    return () => {
+      window.removeEventListener("keydown", onKey)
+      clearTimeout(focusTimer)
+      document.body.style.overflow = prevOverflow
+    }
+  }, [onClose, submitting])
+
+  const canSubmit = title.trim().length > 0 && message.trim().length > 0 && !submitting
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!canSubmit) return
+    setSubmitting(true)
+    try {
+      await dashboard.notifyPatient(patientId, {
+        title: title.trim(),
+        message: message.trim(),
+        notification_type: notificationType,
+        link: link.trim() || undefined,
+      })
+      toast.success(`Notification sent to ${patientName}.`)
+      onClose()
+    } catch (err) {
+      const detail = err instanceof Object && "detail" in err ? (err as { detail: string }).detail : null
+      toast.error(detail || "Could not send notification. Please try again.")
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4"
+      onClick={() => !submitting && onClose()}
+      role="presentation"
+    >
+      <motion.div
+        initial={{ scale: 0.96, y: 8 }}
+        animate={{ scale: 1, y: 0 }}
+        transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+        className="bg-background rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto"
+        onClick={e => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="notify-title"
+      >
+        <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+          <div>
+            <h2 id="notify-title" className="font-display text-xl text-foreground font-light">
+              Send a notification
+            </h2>
+            <p className="text-xs text-muted-foreground font-body mt-0.5">
+              {patientName} will see this in their inbox.
+            </p>
+          </div>
+          <button
+            onClick={() => !submitting && onClose()}
+            disabled={submitting}
+            aria-label="Close"
+            className="p-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted disabled:opacity-40 transition-colors"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4">
+          <div>
+            <label htmlFor="notify-title-input" className="block text-xs text-muted-foreground font-body uppercase tracking-wider mb-1">
+              Title *
+            </label>
+            <input
+              id="notify-title-input"
+              ref={firstFieldRef}
+              type="text"
+              required
+              maxLength={120}
+              value={title}
+              onChange={e => setTitle(e.target.value)}
+              className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm font-body focus:outline-none focus:ring-2 focus:ring-primary/30"
+              placeholder="e.g., Your new care plan is ready"
+            />
+          </div>
+
+          <div>
+            <label htmlFor="notify-message" className="block text-xs text-muted-foreground font-body uppercase tracking-wider mb-1">
+              Message *
+            </label>
+            <textarea
+              id="notify-message"
+              required
+              maxLength={800}
+              value={message}
+              onChange={e => setMessage(e.target.value)}
+              rows={4}
+              className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm font-body focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
+              placeholder="A short, warm note for the patient…"
+            />
+            <p className="text-[11px] text-muted-foreground font-body mt-1 text-right">
+              {message.length}/800
+            </p>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label htmlFor="notify-type" className="block text-xs text-muted-foreground font-body uppercase tracking-wider mb-1">
+                Type
+              </label>
+              <select
+                id="notify-type"
+                value={notificationType}
+                onChange={e => setNotificationType(e.target.value)}
+                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm font-body focus:outline-none focus:ring-2 focus:ring-primary/30"
+              >
+                {NOTIFICATION_TYPES.map(o => (
+                  <option key={o.value} value={o.value}>{o.label}</option>
+                ))}
+              </select>
+              <p className="text-[11px] text-muted-foreground font-body mt-1 leading-tight">
+                {NOTIFICATION_TYPES.find(o => o.value === notificationType)?.hint}
+              </p>
+            </div>
+
+            <div>
+              <label htmlFor="notify-link" className="block text-xs text-muted-foreground font-body uppercase tracking-wider mb-1">
+                Link
+              </label>
+              <select
+                id="notify-link"
+                value={link}
+                onChange={e => setLink(e.target.value)}
+                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm font-body focus:outline-none focus:ring-2 focus:ring-primary/30"
+              >
+                {NOTIFICATION_LINK_PRESETS.map(o => (
+                  <option key={o.value} value={o.value}>{o.label}</option>
+                ))}
+              </select>
+              <p className="text-[11px] text-muted-foreground font-body mt-1 leading-tight">
+                Where the "View details" button takes them.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-end gap-2 pt-2 border-t border-border">
+            <button
+              type="button"
+              onClick={() => !submitting && onClose()}
+              disabled={submitting}
+              className="text-sm font-body text-muted-foreground hover:text-foreground px-4 py-2 disabled:opacity-40"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={!canSubmit}
+              className="btn-primary text-sm min-w-[120px] justify-center disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              {submitting ? "Sending…" : "Send notification"}
+            </button>
+          </div>
+        </form>
+      </motion.div>
+    </motion.div>
   )
 }
