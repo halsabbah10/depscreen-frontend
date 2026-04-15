@@ -180,22 +180,53 @@ export function PatientDetailPage() {
       </div>
 
       {/* Tab pills */}
-      <div className="flex gap-2">
-        {TABS.map(t => (
-          <button
-            key={t.id}
-            onClick={() => setTab(t.id)}
-            className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-body transition-all ${
-              tab === t.id
-                ? 'bg-primary text-primary-foreground shadow-sm'
-                : 'bg-muted/60 text-muted-foreground hover:bg-muted'
-            }`}
-          >
-            <t.icon className="w-3.5 h-3.5" />
-            {t.label}
-          </button>
-        ))}
+      <div
+        role="tablist"
+        aria-label="Patient record sections"
+        className="flex gap-2 overflow-x-auto pb-1 -mb-1"
+      >
+        {TABS.map(t => {
+          const isActive = tab === t.id
+          return (
+            <button
+              key={t.id}
+              role="tab"
+              aria-selected={isActive}
+              aria-controls={`patient-tab-panel-${t.id}`}
+              id={`patient-tab-${t.id}`}
+              tabIndex={isActive ? 0 : -1}
+              onClick={() => setTab(t.id)}
+              onKeyDown={e => {
+                if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+                  e.preventDefault()
+                  const idx = TABS.findIndex(x => x.id === t.id)
+                  const next = e.key === 'ArrowRight'
+                    ? TABS[(idx + 1) % TABS.length]
+                    : TABS[(idx - 1 + TABS.length) % TABS.length]
+                  setTab(next.id)
+                  document.getElementById(`patient-tab-${next.id}`)?.focus()
+                }
+              }}
+              className={`shrink-0 flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-body transition-all ${
+                isActive
+                  ? 'bg-primary text-primary-foreground shadow-sm'
+                  : 'bg-muted/60 text-muted-foreground hover:bg-muted'
+              }`}
+            >
+              <t.icon className="w-3.5 h-3.5" aria-hidden />
+              {t.label}
+            </button>
+          )
+        })}
       </div>
+
+      {/* ── Active tab panel — single region, labelled by the active button ── */}
+      <div
+        role="tabpanel"
+        id={`patient-tab-panel-${tab}`}
+        aria-labelledby={`patient-tab-${tab}`}
+        tabIndex={0}
+      >
 
       {/* ── Profile tab — full patient details ── */}
       {tab === 'profile' && patientId && <ProfileTab patientId={patientId} />}
@@ -387,6 +418,8 @@ export function PatientDetailPage() {
       {tab === 'care-plan' && patientId && <CarePlanTab patientId={patientId} />}
 
       {tab === 'messages' && patientId && <MessagesTab patientId={patientId} />}
+
+      </div>
     </PageTransition>
   )
 }
@@ -826,7 +859,7 @@ function ProfileTab({ patientId }: { patientId: string }) {
   return (
     <div>
       {/* Top summary stats */}
-      <div className="grid grid-cols-4 gap-3 mb-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
         <div className="card-warm rounded-xl p-3 text-center">
           <p className="font-display text-xl text-foreground font-light">{s.total_screenings}</p>
           <p className="text-[10px] text-muted-foreground font-body uppercase tracking-wider mt-1">Screenings</p>
@@ -1092,7 +1125,7 @@ function MedicationsSection({ patientId }: { patientId: string }) {
               <div className="flex items-center gap-1 shrink-0">
                 <button
                   onClick={() => startEdit(m)}
-                  className="p-1.5 rounded-md text-muted-foreground hover:text-primary hover:bg-muted transition-colors"
+                  className="p-1.5 rounded-md text-muted-foreground hover:text-primary hover:bg-muted transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
                   title="Edit"
                   aria-label="Edit medication"
                 >
@@ -1101,7 +1134,7 @@ function MedicationsSection({ patientId }: { patientId: string }) {
                 {m.is_active && (
                   <button
                     onClick={() => remove(m)}
-                    className="p-1.5 rounded-md text-muted-foreground hover:text-rose-600 hover:bg-rose-50 transition-colors"
+                    className="p-1.5 rounded-md text-muted-foreground hover:text-rose-600 hover:bg-rose-50 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
                     title="Mark inactive"
                     aria-label="Mark medication inactive"
                   >
@@ -1727,7 +1760,7 @@ function DiagnosesSection({ patientId }: { patientId: string }) {
               </div>
               <button
                 onClick={() => remove(dx)}
-                className="p-1.5 rounded-md text-muted-foreground hover:text-rose-600 hover:bg-rose-50 transition-colors shrink-0"
+                className="p-1.5 rounded-md text-muted-foreground hover:text-rose-600 hover:bg-rose-50 transition-colors shrink-0 min-w-[44px] min-h-[44px] flex items-center justify-center"
                 title="Remove"
                 aria-label="Remove diagnosis"
               >

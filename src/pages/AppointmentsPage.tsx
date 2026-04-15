@@ -4,7 +4,7 @@
  * Upcoming appointments appear at top, past below. Create form opens as a modal.
  */
 
-import { useEffect, useState, useCallback, useMemo } from 'react'
+import { useEffect, useRef, useState, useCallback, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Calendar, Clock, MapPin, User as UserIcon, Plus, X, CheckCircle2, XCircle, AlertCircle, ChevronLeft, ChevronRight, List, LayoutGrid } from 'lucide-react'
 import toast from 'react-hot-toast'
@@ -146,18 +146,25 @@ export function AppointmentsPage() {
             <div />
           )}
 
-          <div className="flex items-center gap-1 p-1 bg-muted rounded-lg">
+          <div
+            role="group"
+            aria-label="Appointment view mode"
+            className="flex items-center gap-1 p-1 bg-muted rounded-lg"
+          >
             {(['list', 'week', 'month'] as View[]).map(v => {
               const Icon = viewIcons[v]
+              const isActive = view === v
               return (
                 <button
                   key={v}
                   onClick={() => setView(v)}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-body transition-all duration-200 ${
-                    view === v ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground'
+                  aria-pressed={isActive}
+                  aria-label={`Show appointments as ${viewLabels[v]}`}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-body transition-all duration-200 min-h-[40px] ${
+                    isActive ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground'
                   }`}
                 >
-                  <Icon className="w-3.5 h-3.5" />
+                  <Icon className="w-3.5 h-3.5" aria-hidden />
                   {viewLabels[v]}
                 </button>
               )
@@ -306,6 +313,25 @@ function CreateAppointmentModal({ patients, onClose, onCreated }: CreateModalPro
   const [location, setLocation] = useState('')
   const [notes, setNotes] = useState('')
   const [saving, setSaving] = useState(false)
+  const firstFieldRef = useRef<HTMLSelectElement>(null)
+
+  // Escape closes the modal + initial focus on the first field
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose()
+    }
+    window.addEventListener('keydown', onKey)
+    // Focus the patient dropdown after the mount animation settles
+    const focusTimer = setTimeout(() => firstFieldRef.current?.focus(), 120)
+    // Lock page scroll while the modal is open
+    const originalOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      window.removeEventListener('keydown', onKey)
+      clearTimeout(focusTimer)
+      document.body.style.overflow = originalOverflow
+    }
+  }, [onClose])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -348,18 +374,27 @@ function CreateAppointmentModal({ patients, onClose, onCreated }: CreateModalPro
         animate={{ scale: 1, y: 0 }}
         className="bg-background rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto"
         onClick={e => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="create-appt-title"
       >
         <div className="flex items-center justify-between px-6 py-4 border-b border-border">
-          <h2 className="font-display text-xl text-foreground font-light">New appointment</h2>
-          <button onClick={onClose} aria-label="Close" className="text-muted-foreground hover:text-foreground">
+          <h2 id="create-appt-title" className="font-display text-xl text-foreground font-light">New appointment</h2>
+          <button
+            onClick={onClose}
+            aria-label="Close dialog"
+            className="text-muted-foreground hover:text-foreground min-w-[44px] min-h-[44px] flex items-center justify-center rounded-md"
+          >
             <X className="w-4 h-4" />
           </button>
         </div>
 
         <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4">
           <div>
-            <label className="block text-sm font-medium mb-1.5 font-body">Patient</label>
+            <label htmlFor="appt-patient" className="block text-sm font-medium mb-1.5 font-body">Patient</label>
             <select
+              id="appt-patient"
+              ref={firstFieldRef}
               className="input py-2.5"
               value={patientId}
               onChange={e => setPatientId(e.target.value)}
@@ -754,14 +789,16 @@ function MonthCalendarView({ refDate, setRefDate, appointments, loading }: Calen
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-7 gap-1 mb-1">
-            {WEEKDAY_LABELS.map(d => (
-              <div key={d} className="text-[10px] font-body text-muted-foreground uppercase tracking-wider text-center py-1">
-                {d}
+          <div className="overflow-x-auto -mx-4 sm:mx-0 px-4 sm:px-0">
+            <div className="min-w-[640px]">
+              <div className="grid grid-cols-7 gap-1 mb-1">
+                {WEEKDAY_LABELS.map(d => (
+                  <div key={d} className="text-[10px] font-body text-muted-foreground uppercase tracking-wider text-center py-1">
+                    {d}
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-          <div className="grid grid-cols-7 gap-1">
+              <div className="grid grid-cols-7 gap-1">
             {cells.map((d, i) => {
               const inMonth = d.getMonth() === currentMonth
               const isToday = sameDay(d, today)
@@ -800,6 +837,8 @@ function MonthCalendarView({ refDate, setRefDate, appointments, loading }: Calen
                 </button>
               )
             })}
+              </div>
+            </div>
           </div>
 
           {selectedDay && (
