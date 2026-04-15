@@ -61,6 +61,13 @@ function AppRoutes() {
           <Layout />
         </ProtectedRoute>
       }>
+        {/* Root — send each role to its own home. ProtectedRoute above
+            has already guaranteed authentication, so this is a pure
+            routing decision. */}
+        <Route index element={
+          <Navigate to={isPatient ? patientHome : '/dashboard'} replace />
+        } />
+
         {/* Patient */}
         <Route path="/screening" element={
           <ProtectedRoute roles={['patient']}><ScreeningPage /></ProtectedRoute>
