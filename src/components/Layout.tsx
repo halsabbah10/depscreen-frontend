@@ -7,6 +7,7 @@
  * The layout should feel like opening a thoughtful book, not launching an app.
  */
 
+import { Suspense } from 'react'
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
 import {
@@ -15,6 +16,7 @@ import {
 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { ErrorBoundary } from './ui/ErrorBoundary'
+import { BreathingCircle } from './ui/BreathingCircle'
 
 const PATIENT_NAV = [
   { path: '/screening', label: 'New Screening', icon: ClipboardList },
@@ -182,11 +184,21 @@ export function Layout() {
         </div>
       )}
 
-      {/* Main content */}
+      {/* Main content — Suspense here so lazy-loaded pages show the
+          signature BreathingCircle while their chunk fetches, with the
+          header/footer remaining visible. */}
       <main className="flex-1 relative z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
           <ErrorBoundary>
-            <Outlet />
+            <Suspense
+              fallback={
+                <div className="flex items-center justify-center py-24">
+                  <BreathingCircle size="md" label="Loading..." />
+                </div>
+              }
+            >
+              <Outlet />
+            </Suspense>
           </ErrorBoundary>
         </div>
       </main>

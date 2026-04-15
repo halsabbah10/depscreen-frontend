@@ -9,29 +9,49 @@
  * - Shared: /results/:id, /profile
  */
 
+import { lazy, Suspense } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { ProtectedRoute } from './components/ProtectedRoute'
 import { Layout } from './components/Layout'
+import { BreathingCircle } from './components/ui/BreathingCircle'
 
-// Pages
+// Eager — always needed for the first paint or the 404 fallback.
+// Lazy — loaded on first navigation to the page. This drops ~30-50 KB
+// gzipped off the initial bundle since a patient never ships the full
+// clinician dashboard/patients code and vice versa.
 import { LoginPage } from './pages/LoginPage'
-import { OnboardingPage } from './pages/OnboardingPage'
-import { ScreeningPage } from './pages/ScreeningPage'
-import { ResultPage } from './pages/ResultPage'
-import { ChatPage } from './pages/ChatPage'
-import { PatientHistoryPage } from './pages/PatientHistoryPage'
-import { TrendsPage } from './pages/TrendsPage'
-import { NotificationsPage } from './pages/NotificationsPage'
-import { DashboardPage } from './pages/DashboardPage'
-import { PatientListPage } from './pages/PatientListPage'
-import { PatientDetailPage } from './pages/PatientDetailPage'
-import { ProfilePage } from './pages/ProfilePage'
-import { MyAppointmentsPage } from './pages/MyAppointmentsPage'
-import { MyCarePlanPage } from './pages/MyCarePlanPage'
-import { AppointmentsPage } from './pages/AppointmentsPage'
-import { MessagesPage } from './pages/MessagesPage'
 import { NotFoundPage } from './pages/NotFoundPage'
+
+const OnboardingPage = lazy(() => import('./pages/OnboardingPage').then(m => ({ default: m.OnboardingPage })))
+const ScreeningPage = lazy(() => import('./pages/ScreeningPage').then(m => ({ default: m.ScreeningPage })))
+const ResultPage = lazy(() => import('./pages/ResultPage').then(m => ({ default: m.ResultPage })))
+const ChatPage = lazy(() => import('./pages/ChatPage').then(m => ({ default: m.ChatPage })))
+const PatientHistoryPage = lazy(() => import('./pages/PatientHistoryPage').then(m => ({ default: m.PatientHistoryPage })))
+const TrendsPage = lazy(() => import('./pages/TrendsPage').then(m => ({ default: m.TrendsPage })))
+const NotificationsPage = lazy(() => import('./pages/NotificationsPage').then(m => ({ default: m.NotificationsPage })))
+const DashboardPage = lazy(() => import('./pages/DashboardPage').then(m => ({ default: m.DashboardPage })))
+const PatientListPage = lazy(() => import('./pages/PatientListPage').then(m => ({ default: m.PatientListPage })))
+const PatientDetailPage = lazy(() => import('./pages/PatientDetailPage').then(m => ({ default: m.PatientDetailPage })))
+const ProfilePage = lazy(() => import('./pages/ProfilePage').then(m => ({ default: m.ProfilePage })))
+const MyAppointmentsPage = lazy(() => import('./pages/MyAppointmentsPage').then(m => ({ default: m.MyAppointmentsPage })))
+const MyCarePlanPage = lazy(() => import('./pages/MyCarePlanPage').then(m => ({ default: m.MyCarePlanPage })))
+const AppointmentsPage = lazy(() => import('./pages/AppointmentsPage').then(m => ({ default: m.AppointmentsPage })))
+const MessagesPage = lazy(() => import('./pages/MessagesPage').then(m => ({ default: m.MessagesPage })))
+
+/**
+ * Fallback while a lazy page's chunk is fetching. We render it inside
+ * the Layout so the header/nav stay visible — only the main content
+ * area shows the breath indicator. Feels like a normal page transition
+ * rather than a cold load.
+ */
+function PageLoader() {
+  return (
+    <div className="flex items-center justify-center py-24">
+      <BreathingCircle size="md" label="Loading..." />
+    </div>
+  )
+}
 
 function AppRoutes() {
   const { isAuthenticated, isPatient, user } = useAuth()
@@ -48,10 +68,13 @@ function AppRoutes() {
           : <LoginPage />
       } />
 
-      {/* Onboarding — outside Layout (full-screen wizard) */}
+      {/* Onboarding — outside Layout (full-screen wizard). Its own
+          Suspense since it renders without the shared header/nav. */}
       <Route path="/onboarding" element={
         <ProtectedRoute roles={['patient']}>
-          <OnboardingPage />
+          <Suspense fallback={<PageLoader />}>
+            <OnboardingPage />
+          </Suspense>
         </ProtectedRoute>
       } />
 
