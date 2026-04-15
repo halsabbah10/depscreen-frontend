@@ -8,7 +8,14 @@
     "build": "tsc && vite build",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "typecheck": "tsc --noEmit",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "e2e": "playwright test",
+    "e2e:ui": "playwright test --ui",
+    "e2e:headed": "playwright test --headed",
+    "e2e:debug": "playwright test --debug"
   },
   "dependencies": {
     "@fontsource/cormorant-garamond": "^5.2.11",
@@ -34,19 +41,27 @@
     "tailwind-merge": "^2.2.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.59.1",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.1",
     "@types/node": "^25.2.2",
     "@types/react": "^18.2.43",
     "@types/react-dom": "^18.2.17",
     "@typescript-eslint/eslint-plugin": "^6.14.0",
     "@typescript-eslint/parser": "^6.14.0",
     "@vitejs/plugin-react": "^4.2.1",
+    "@vitest/coverage-v8": "^4.1.4",
     "autoprefixer": "^10.4.16",
     "eslint": "^8.55.0",
     "eslint-plugin-react-hooks": "^4.6.0",
     "eslint-plugin-react-refresh": "^0.4.5",
+    "jsdom": "^29.0.2",
+    "msw": "^2.13.3",
     "postcss": "^8.4.32",
     "tailwindcss": "^3.4.0",
     "typescript": "^5.2.2",
-    "vite": "^5.0.8"
+    "vite": "^5.0.8",
+    "vitest": "^4.1.4"
   }
 }
