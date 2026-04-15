@@ -234,7 +234,7 @@ export function PatientDetailPage() {
       {/* ── Screenings tab ── */}
       {tab === 'screenings' && (
         <>
-          {screenings?.items.length === 0 ? (
+          {!screenings || screenings.items.length === 0 ? (
             <div className="card-warm rounded-xl">
               <EmptyState
                 icon={<ClipboardList className="w-5 h-5 text-muted-foreground/50" />}
@@ -244,7 +244,7 @@ export function PatientDetailPage() {
             </div>
           ) : (
             <StaggerChildren className="space-y-2.5">
-              {screenings?.items.map(item => {
+              {screenings.items.map(item => {
                 const colors = SEVERITY_COLORS[item.severity_level] || SEVERITY_COLORS.none
                 return (
                   <StaggerItem key={item.id}>

@@ -21,12 +21,26 @@ export function DashboardPage() {
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [screenings, setScreenings] = useState<ScreeningHistoryResponse | null>(null)
   const [loading, setLoading] = useState(true)
+  const [screeningsLoading, setScreeningsLoading] = useState(true)
   const [filter, setFilter] = useState<'all' | 'flagged'>('all')
 
   useEffect(() => {
+    // Each time the filter changes (or on first mount) we're about to refetch
+    // the screenings list. Mark the list as loading so the UI shows a skeleton
+    // instead of silently rendering stale / null data.
+    setScreeningsLoading(true)
     Promise.all([
       dashboard.getStats().then(setStats),
-      dashboard.getAllScreenings(1, 10, undefined, filter === 'flagged').then(setScreenings),
+      dashboard
+        .getAllScreenings(1, 10, undefined, filter === 'flagged')
+        .then(data => {
+          setScreenings(data)
+          setScreeningsLoading(false)
+        })
+        .catch(err => {
+          setScreeningsLoading(false)
+          throw err
+        }),
     ])
       .catch((err: unknown) => {
         const detail = err instanceof Object && 'detail' in err ? (err as { detail: string }).detail : null
@@ -150,7 +164,11 @@ export function DashboardPage() {
           </div>
         </div>
 
-        {screenings?.items.length === 0 ? (
+        {screeningsLoading || !screenings ? (
+          <div className="py-12 px-6 flex items-center justify-center">
+            <BreathingCircle size="sm" label={filter === 'flagged' ? 'Looking for flagged screenings...' : 'Loading recent screenings...'} />
+          </div>
+        ) : screenings.items.length === 0 ? (
           <div className="py-12 px-6 text-center">
             <p className="font-display text-lg text-foreground mb-1">
               {filter === 'flagged' ? 'No flagged screenings' : 'No screenings yet'}
@@ -163,7 +181,7 @@ export function DashboardPage() {
           </div>
         ) : (
           <StaggerChildren className="divide-y divide-border/40">
-            {screenings?.items.map(item => {
+            {screenings.items.map(item => {
               const colors = SEVERITY_COLORS[item.severity_level] || SEVERITY_COLORS.none
               return (
                 <StaggerItem key={item.id}>
