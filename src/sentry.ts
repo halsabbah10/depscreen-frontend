@@ -43,9 +43,8 @@ function scrub(value: unknown): unknown {
 export function initSentry(): void {
   const dsn = import.meta.env.VITE_SENTRY_DSN
   if (!dsn) {
-    // Expected in local dev; log once so it's visible in console if needed
+    // Expected in local dev; log once so it's visible in console if needed.
     if (import.meta.env.DEV) {
-      // eslint-disable-next-line no-console
       console.info('[sentry] disabled — VITE_SENTRY_DSN not set')
     }
     return
