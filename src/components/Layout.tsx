@@ -46,7 +46,7 @@ export function Layout() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-background geo-pattern">
+    <div className="h-screen flex flex-col bg-background geo-pattern overflow-hidden">
       {/* Toast notifications */}
       <Toaster
         position="top-right"
@@ -77,13 +77,16 @@ export function Layout() {
 
       {/* Quiet presence-of-support banner — always visible but not alarming.
           Avoids the alert icon and "alert" role so it doesn't read as an
-          active warning to a patient on every page load. */}
-      <div className="safety-banner">
+          active warning to a patient on every page load.
+          shrink-0 so it stays pinned above the scrollable main. */}
+      <div className="safety-banner shrink-0">
         A supportive companion — not a diagnosis. Support any time: <strong>999</strong> or Shamsaha <strong>17651421</strong>.
       </div>
 
-      {/* Header */}
-      <header className="sticky top-0 z-40 bg-gradient-to-r from-[hsl(175,45%,24%)] to-[hsl(175,40%,20%)] shadow-md">
+      {/* Header — shrink-0 keeps it fixed above the scroll region.
+          No longer `sticky` since the parent owns vertical space now; nav
+          and safety banner form a non-scrolling top block. */}
+      <header className="shrink-0 z-40 bg-gradient-to-r from-[hsl(175,45%,24%)] to-[hsl(175,40%,20%)] shadow-md">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
           {/* Logo */}
           <Link
@@ -167,9 +170,10 @@ export function Layout() {
         </div>
       </header>
 
-      {/* Complete-profile banner for patients who skipped onboarding */}
+      {/* Complete-profile banner for patients who skipped onboarding.
+          shrink-0 keeps it pinned above the scrollable main. */}
       {isPatient && user && !user.onboarding_completed && location.pathname !== '/onboarding' && (
-        <div className="bg-clay/15 border-b border-clay/30 relative z-30">
+        <div className="shrink-0 bg-clay/15 border-b border-clay/30 relative z-30">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 py-2.5 flex items-center justify-between gap-4">
             <p className="text-xs text-foreground font-body">
               <span className="font-medium">Complete your profile</span> to unlock personalized clinical context in chat and screenings.
@@ -184,11 +188,12 @@ export function Layout() {
         </div>
       )}
 
-      {/* Main content — Suspense here so lazy-loaded pages show the
-          signature BreathingCircle while their chunk fetches, with the
-          header/footer remaining visible. */}
-      <main className="flex-1 relative z-10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
+      {/* Main content — the ONLY scroll region. Short pages don't scroll
+          because content fits in flex-1; long pages scroll internally,
+          leaving the top banner + nav untouched. Suspense shows the
+          signature BreathingCircle while lazy chunks fetch. */}
+      <main className="flex-1 overflow-y-auto relative z-10">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 min-h-full flex flex-col">
           <ErrorBoundary>
             <Suspense
               fallback={
@@ -203,8 +208,8 @@ export function Layout() {
         </div>
       </main>
 
-      {/* Footer */}
-      <footer className="border-t border-border/60 py-3 px-4 bg-white/60 relative z-10">
+      {/* Footer — shrink-0 pins it below the scrollable main. */}
+      <footer className="shrink-0 border-t border-border/60 py-3 px-4 bg-white/60 relative z-10">
         <p className="text-center text-xs text-muted-foreground font-body">
           DepScreen — Research prototype. Not for clinical use without professional supervision.
         </p>
