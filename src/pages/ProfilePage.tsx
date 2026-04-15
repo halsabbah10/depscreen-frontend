@@ -335,19 +335,21 @@ export function ProfilePage() {
 
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div>
-                    <label className="block text-xs font-medium text-foreground mb-1 font-body">Full Name</label>
-                    <input type="text" className="input" value={fullName} onChange={e => setFullName(e.target.value)} />
+                    <label htmlFor="profile-full-name" className="block text-xs font-medium text-foreground mb-1 font-body">Full Name</label>
+                    <input id="profile-full-name" type="text" className="input" value={fullName} onChange={e => setFullName(e.target.value)} />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-foreground mb-1 font-body">Date of Birth</label>
-                    <input type="date" className="input" value={dateOfBirth} onChange={e => setDateOfBirth(e.target.value)} />
+                    <label htmlFor="profile-dob" className="block text-xs font-medium text-foreground mb-1 font-body">Date of Birth</label>
+                    <input id="profile-dob" type="date" className="input" value={dateOfBirth} onChange={e => setDateOfBirth(e.target.value)} />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-foreground mb-1 font-body">Gender</label>
-                    <div className="flex gap-2">
+                    <span id="profile-gender-label" className="block text-xs font-medium text-foreground mb-1 font-body">Gender</span>
+                    <div role="radiogroup" aria-labelledby="profile-gender-label" className="flex gap-2">
                       {['male', 'female', 'prefer_not_to_say'].map(g => (
                         <button
                           key={g}
+                          role="radio"
+                          aria-checked={gender === g}
                           onClick={() => setGender(g)}
                           className={`flex-1 py-2 text-xs rounded-md border transition-colors font-body capitalize ${
                             gender === g ? 'border-primary bg-primary/5 text-primary' : 'border-border text-muted-foreground'
@@ -359,19 +361,22 @@ export function ProfilePage() {
                     </div>
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-foreground mb-1 font-body">Phone (+973)</label>
-                    <input type="tel" className="input" placeholder="3XXX XXXX" value={phone} onChange={e => setPhone(e.target.value)} />
+                    <label htmlFor="profile-phone" className="block text-xs font-medium text-foreground mb-1 font-body">Phone (+973)</label>
+                    <input id="profile-phone" type="tel" className="input" placeholder="3XXX XXXX" value={phone} onChange={e => setPhone(e.target.value)} />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-foreground mb-1 font-body">CPR Number</label>
-                    <input type="text" className="input font-mono" placeholder="YYMMNNNNC" maxLength={9} value={cprNumber} onChange={e => setCprNumber(e.target.value)} />
+                    <label htmlFor="profile-cpr" className="block text-xs font-medium text-foreground mb-1 font-body">CPR Number</label>
+                    <input id="profile-cpr" type="text" className="input font-mono" placeholder="YYMMNNNNC" maxLength={9} value={cprNumber} onChange={e => setCprNumber(e.target.value)} />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-foreground mb-1 font-body">Blood Type</label>
-                    <div className="grid grid-cols-4 gap-1">
+                    <span id="profile-blood-label" className="block text-xs font-medium text-foreground mb-1 font-body">Blood Type</span>
+                    <div role="radiogroup" aria-labelledby="profile-blood-label" className="grid grid-cols-4 gap-1">
                       {['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'].map(bt => (
                         <button
                           key={bt}
+                          role="radio"
+                          aria-checked={bloodType === bt}
+                          aria-label={`Blood type ${bt}`}
                           onClick={() => setBloodType(bt)}
                           className={`py-1.5 text-xs rounded border transition-colors font-body ${
                             bloodType === bt ? 'border-primary bg-primary/5 text-primary font-medium' : 'border-border text-muted-foreground'
@@ -383,8 +388,8 @@ export function ProfilePage() {
                     </div>
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-foreground mb-1 font-body">Nationality</label>
-                    <input type="text" className="input" placeholder="Bahraini" value={nationality} onChange={e => setNationality(e.target.value)} />
+                    <label htmlFor="profile-nationality" className="block text-xs font-medium text-foreground mb-1 font-body">Nationality</label>
+                    <input id="profile-nationality" type="text" className="input" placeholder="Bahraini" value={nationality} onChange={e => setNationality(e.target.value)} />
                   </div>
                 </div>
 
@@ -574,10 +579,27 @@ export function ProfilePage() {
                 </div>
               )}
 
-              <div className="grid grid-cols-12 gap-2 mt-3">
-                <input className="input col-span-5" placeholder="Contact name" value={newContactName} onChange={e => setNewContactName(e.target.value)} />
-                <input className="input col-span-3" placeholder="+973 XXXX" value={newContactPhone} onChange={e => setNewContactPhone(e.target.value)} />
-                <select className="input col-span-2" value={newContactRelation} onChange={e => setNewContactRelation(e.target.value)}>
+              <div className="grid grid-cols-12 gap-2 mt-3" role="group" aria-label="Add emergency contact">
+                <input
+                  className="input col-span-5"
+                  placeholder="Contact name"
+                  aria-label="Emergency contact name"
+                  value={newContactName}
+                  onChange={e => setNewContactName(e.target.value)}
+                />
+                <input
+                  className="input col-span-3"
+                  placeholder="+973 XXXX"
+                  aria-label="Emergency contact phone (+973)"
+                  value={newContactPhone}
+                  onChange={e => setNewContactPhone(e.target.value)}
+                />
+                <select
+                  className="input col-span-2"
+                  aria-label="Relationship"
+                  value={newContactRelation}
+                  onChange={e => setNewContactRelation(e.target.value)}
+                >
                   <option value="parent">Parent</option>
                   <option value="spouse">Spouse</option>
                   <option value="sibling">Sibling</option>
