@@ -23,6 +23,7 @@ import type {
 } from '../types/api'
 import { BreathingCircle, BreathingDot } from '../components/ui/BreathingCircle'
 import { PageTransition } from '../components/ui/PageTransition'
+import { AvatarCropModal } from '../components/ui/AvatarCropModal'
 import { formatDate } from '../lib/localization'
 
 type Tab = 'overview' | 'medical' | 'contacts' | 'settings'
@@ -32,6 +33,8 @@ export function ProfilePage() {
   const [tab, setTab] = useState<Tab>('overview')
   const [saving, setSaving] = useState(false)
   const [avatarBusy, setAvatarBusy] = useState(false)
+  // File the user just picked. Non-null -> AvatarCropModal is open.
+  const [pendingCropFile, setPendingCropFile] = useState<File | null>(null)
 
   // Profile form
   const [fullName, setFullName] = useState(user?.full_name || '')
@@ -242,25 +245,17 @@ export function ProfilePage() {
                   type="file"
                   accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
                   className="hidden"
-                  onChange={async (e) => {
+                  onChange={(e) => {
                     const file = e.target.files?.[0]
-                    e.target.value = ''  // reset so same file can be re-picked after an error
+                    e.target.value = '' // reset so same file can be re-picked after cancel/error
                     if (!file) return
                     if (file.size > 5 * 1024 * 1024) {
                       toast.error('Please pick an image smaller than 5 MB.')
                       return
                     }
-                    setAvatarBusy(true)
-                    try {
-                      await patientApi.uploadProfilePicture(file)
-                      toast.success('Picture updated.')
-                      await refreshUser()
-                    } catch (err) {
-                      const detail = err instanceof Object && 'detail' in err ? (err as { detail: string }).detail : null
-                      toast.error(detail || 'Could not upload picture. Please try again.')
-                    } finally {
-                      setAvatarBusy(false)
-                    }
+                    // Open the crop modal instead of uploading directly — user
+                    // gets to frame the shot like mainstream apps (IG/LinkedIn).
+                    setPendingCropFile(file)
                   }}
                 />
               </label>
@@ -664,6 +659,34 @@ export function ProfilePage() {
           )}
         </motion.div>
       </div>
+
+      {/* Avatar crop modal — mounts whenever the user has picked a file that
+          hasn't been processed yet. Upload fires on Save, closes on success. */}
+      {pendingCropFile && (
+        <AvatarCropModal
+          file={pendingCropFile}
+          onClose={() => setPendingCropFile(null)}
+          onConfirm={async (blob) => {
+            setAvatarBusy(true)
+            try {
+              // The cropped blob is always a JPEG from the canvas export.
+              // Wrap it as a File so the multipart form carries a filename
+              // Resend/Supabase/Sentry breadcrumbs can reason about.
+              const cropped = new File([blob], 'avatar.jpg', { type: 'image/jpeg' })
+              await patientApi.uploadProfilePicture(cropped)
+              toast.success('Picture updated.')
+              await refreshUser()
+              setPendingCropFile(null)
+            } catch (err) {
+              const detail = err instanceof Object && 'detail' in err ? (err as { detail: string }).detail : null
+              toast.error(detail || 'Could not upload picture. Please try again.')
+              // Keep the modal open so the user can try again without re-picking
+            } finally {
+              setAvatarBusy(false)
+            }
+          }}
+        />
+      )}
     </PageTransition>
   )
 }
