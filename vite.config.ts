@@ -12,14 +12,13 @@ export default defineConfig({
   },
   build: {
     // Split heavy deps into separate chunks so the initial page load ships less.
-    // Biggest wins: framer-motion, react-markdown/remark, i18next, radix-ui.
+    // Biggest wins: framer-motion, react-markdown/remark, radix-ui.
     rollupOptions: {
       output: {
         manualChunks: {
           react: ['react', 'react-dom', 'react-router-dom'],
           motion: ['framer-motion'],
           markdown: ['react-markdown', 'remark-gfm'],
-          i18n: ['i18next', 'react-i18next'],
           radix: [
             '@radix-ui/react-alert-dialog',
             '@radix-ui/react-dialog',

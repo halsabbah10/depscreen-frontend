@@ -1,8 +1,0 @@
-{
-  "_note": "Arabic stub — ready for translation. All keys match en.json.",
-  "app": {
-    "name": "DepScreen",
-    "tagline": "AI-Powered Depression Screening",
-    "disclaimer": "Screening tool only — not a diagnostic instrument. In Bahrain, call 999 for emergencies."
-  }
-}
