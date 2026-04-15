@@ -1,3 +1,8 @@
+// Initialize Sentry BEFORE anything else so bootstrap errors are captured.
+// No-op when VITE_SENTRY_DSN is unset.
+import { initSentry } from './sentry'
+initSentry()
+
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 
