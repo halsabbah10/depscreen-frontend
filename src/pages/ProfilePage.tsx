@@ -31,6 +31,7 @@ export function ProfilePage() {
   const { user, logout, isPatient, isClinician, refreshUser } = useAuth()
   const [tab, setTab] = useState<Tab>('overview')
   const [saving, setSaving] = useState(false)
+  const [avatarBusy, setAvatarBusy] = useState(false)
 
   // Profile form
   const [fullName, setFullName] = useState(user?.full_name || '')
@@ -213,30 +214,52 @@ export function ProfilePage() {
         <div className="card-warm p-5 flex items-center gap-4 mb-6">
           <div className="relative">
             {user?.profile_picture_url ? (
-              <img src={user.profile_picture_url} alt="" className="w-14 h-14 rounded-full object-cover" />
+              <img
+                src={user.profile_picture_url}
+                alt={`${user.full_name}'s profile picture`}
+                className={`w-14 h-14 rounded-full object-cover ${avatarBusy ? 'opacity-50' : ''}`}
+              />
             ) : (
-              <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center">
+              <div className={`w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center ${avatarBusy ? 'opacity-50' : ''}`}>
                 <span className="font-display text-xl text-primary">
                   {user?.full_name?.charAt(0)?.toUpperCase() || '?'}
                 </span>
               </div>
             )}
-            {isPatient && (
-              <label className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-background border border-border flex items-center justify-center cursor-pointer hover:bg-muted transition-colors">
-                <Camera className="w-3 h-3 text-muted-foreground" />
+            {avatarBusy && (
+              <div className="absolute inset-0 flex items-center justify-center">
+                <BreathingDot />
+              </div>
+            )}
+            {isPatient && !avatarBusy && (
+              <label
+                className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full bg-background border border-border flex items-center justify-center cursor-pointer hover:bg-muted hover:border-primary/40 transition-colors"
+                title="Upload a picture"
+                aria-label="Upload profile picture"
+              >
+                <Camera className="w-3.5 h-3.5 text-muted-foreground" />
                 <input
                   type="file"
-                  accept="image/*"
+                  accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
                   className="hidden"
                   onChange={async (e) => {
                     const file = e.target.files?.[0]
+                    e.target.value = ''  // reset so same file can be re-picked after an error
                     if (!file) return
+                    if (file.size > 5 * 1024 * 1024) {
+                      toast.error('Please pick an image smaller than 5 MB.')
+                      return
+                    }
+                    setAvatarBusy(true)
                     try {
                       await patientApi.uploadProfilePicture(file)
-                      toast.success('Photo updated.')
+                      toast.success('Picture updated.')
                       await refreshUser()
-                    } catch {
-                      toast.error('Could not upload photo.')
+                    } catch (err) {
+                      const detail = err instanceof Object && 'detail' in err ? (err as { detail: string }).detail : null
+                      toast.error(detail || 'Could not upload picture. Please try again.')
+                    } finally {
+                      setAvatarBusy(false)
                     }
                   }}
                 />
@@ -246,6 +269,27 @@ export function ProfilePage() {
           <div className="flex-1">
             <p className="font-display text-lg text-foreground">{user?.full_name}</p>
             <p className="text-sm text-muted-foreground font-body">{user?.email}</p>
+            {isPatient && user?.profile_picture_url && !avatarBusy && (
+              <button
+                onClick={async () => {
+                  if (!confirm('Remove your profile picture?')) return
+                  setAvatarBusy(true)
+                  try {
+                    await patientApi.deleteProfilePicture()
+                    toast.success('Picture removed.')
+                    await refreshUser()
+                  } catch (err) {
+                    const detail = err instanceof Object && 'detail' in err ? (err as { detail: string }).detail : null
+                    toast.error(detail || 'Could not remove picture.')
+                  } finally {
+                    setAvatarBusy(false)
+                  }
+                }}
+                className="text-xs text-muted-foreground hover:text-rose-600 transition-colors mt-1 font-body"
+              >
+                Remove picture
+              </button>
+            )}
           </div>
           <span className="text-xs px-2.5 py-1 rounded-full bg-muted text-muted-foreground font-body capitalize">
             {user?.role}

@@ -712,6 +712,10 @@ export const patient = {
     })
     return handleResponse(response)
   },
+
+  async deleteProfilePicture(): Promise<{ status: string }> {
+    return del('/patient/profile/picture')
+  },
 }
 
 // ── Terminology (RxNorm, ICD-10) ──────────────────────────────────────────────
