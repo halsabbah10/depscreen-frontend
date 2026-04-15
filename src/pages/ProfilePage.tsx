@@ -231,7 +231,7 @@ export function ProfilePage() {
                 <BreathingDot />
               </div>
             )}
-            {isPatient && !avatarBusy && (
+            {!avatarBusy && (
               <label
                 className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full bg-background border border-border flex items-center justify-center cursor-pointer hover:bg-muted hover:border-primary/40 transition-colors"
                 title="Upload a picture"
@@ -269,7 +269,7 @@ export function ProfilePage() {
           <div className="flex-1">
             <p className="font-display text-lg text-foreground">{user?.full_name}</p>
             <p className="text-sm text-muted-foreground font-body">{user?.email}</p>
-            {isPatient && user?.profile_picture_url && !avatarBusy && (
+            {user?.profile_picture_url && !avatarBusy && (
               <button
                 onClick={async () => {
                   if (!confirm('Remove your profile picture?')) return
