@@ -2,7 +2,7 @@
 
 React client for the DepScreen depression-screening platform. Deployed to Vercel; the backend FastAPI service is in a sibling repo and lives on HuggingFace Spaces.
 
-Product overview + architecture: see the [backend README](../backend/README.md). This README covers the frontend only.
+Product overview + architecture: see the [backend README](https://github.com/halsabbah10/depscreen-backend#readme). This README covers the frontend only.
 
 ---
 
@@ -64,7 +64,7 @@ See [`CHANGELOG.md`](./CHANGELOG.md) for the feature evolution.
 
 ### Prerequisites
 - Node.js 20+ (tested on 22 in CI)
-- A DepScreen backend reachable at `:8000` — clone the [backend repo](../backend) and `python -m uvicorn main:app --reload`
+- A DepScreen backend reachable at `:8000` — clone [halsabbah10/depscreen-backend](https://github.com/halsabbah10/depscreen-backend) and `python -m uvicorn main:app --reload`
 
 ### Setup + run
 
