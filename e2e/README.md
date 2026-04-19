@@ -33,7 +33,7 @@ E2E_BACKEND_URL=https://my-preview.hf.space npm run e2e
 
 - **No DB seeding.** Every test registers fresh users via the public API and cleans up after itself (soft-delete on the backend). This matches the path a real user walks.
 - **Serial execution.** Workers set to 1 in the config — parallel runs fight over conversation-uniqueness / email-uniqueness invariants. If your laptop feels slow, just let it run single-file.
-- **No LLM mocking at this layer.** Chat and screening exercise the real LLM. If the backend is configured with a real OpenRouter key, the tests will hit it. If it's not, the tests gracefully skip or assert on the fallback path.
+- **No LLM mocking at this layer.** Chat and screening exercise the real LLM. If the backend is configured with a real Google AI Studio key, the tests will hit it. If it's not, the tests gracefully skip or assert on the fallback path.
 - **Screenshots + video on failure.** Check `test-results/` after a run.
 
 ## Not in CI yet
@@ -42,6 +42,6 @@ These tests are manual for the capstone demo. Wiring them into GitHub
 Actions needs:
 1. A Postgres + pgvector service container
 2. A way to boot the Python backend without the real ML model (env flag)
-3. Mocked OpenRouter credentials
+3. Mocked Google AI Studio credentials
 
 That's in the deployment phase — see `TESTING.md` at the repo root.
