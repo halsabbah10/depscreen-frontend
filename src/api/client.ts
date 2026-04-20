@@ -29,26 +29,17 @@ const API_BASE = '/api'
 // ── Token Management ─────────────────────────────────────────────────────────
 
 let accessToken: string | null = null
-let refreshToken: string | null = null
 
-export function setTokens(access: string, refresh: string) {
+export function setAccessToken(access: string) {
   accessToken = access
-  refreshToken = refresh
-  localStorage.setItem('refresh_token', refresh)
 }
 
 export function clearTokens() {
   accessToken = null
-  refreshToken = null
-  localStorage.removeItem('refresh_token')
 }
 
 export function getAccessToken(): string | null {
   return accessToken
-}
-
-export function loadStoredRefreshToken(): string | null {
-  return localStorage.getItem('refresh_token')
 }
 
 // ── HTTP Helpers ─────────────────────────────────────────────────────────────
@@ -170,22 +161,37 @@ export async function downloadAsFile(path: string, fallbackFilename: string): Pr
 
 export const auth = {
   async register(data: RegisterRequest): Promise<TokenResponse> {
-    const result = await post<TokenResponse>('/auth/register', data)
-    setTokens(result.access_token, result.refresh_token)
+    const response = await fetch(`${API_BASE}/auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(data),
+    })
+    const result = await handleResponse<TokenResponse>(response)
+    setAccessToken(result.access_token)
     return result
   },
 
   async login(data: LoginRequest): Promise<TokenResponse> {
-    const result = await post<TokenResponse>('/auth/login', data)
-    setTokens(result.access_token, result.refresh_token)
+    const response = await fetch(`${API_BASE}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(data),
+    })
+    const result = await handleResponse<TokenResponse>(response)
+    setAccessToken(result.access_token)
     return result
   },
 
   async refresh(): Promise<TokenResponse> {
-    const stored = refreshToken || loadStoredRefreshToken()
-    if (!stored) throw new APIError('No refresh token', 401)
-    const result = await post<TokenResponse>('/auth/refresh', { refresh_token: stored })
-    setTokens(result.access_token, result.refresh_token)
+    const response = await fetch(`${API_BASE}/auth/refresh`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+    })
+    const result = await handleResponse<TokenResponse>(response)
+    setAccessToken(result.access_token)
     return result
   },
 
@@ -198,12 +204,13 @@ export const auth = {
   },
 
   async logout() {
-    // Fire-and-forget — even if the server call fails, we always clear local tokens.
     try {
-      await post('/auth/logout', {})
-    } catch {
-      /* ignore */
-    }
+      await fetch(`${API_BASE}/auth/logout`, {
+        method: 'POST',
+        headers: authHeaders(),
+        credentials: 'include',
+      })
+    } catch { /* best-effort */ }
     clearTokens()
   },
 }

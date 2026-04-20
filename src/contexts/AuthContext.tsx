@@ -7,7 +7,7 @@
 
 import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from 'react'
 import type { UserProfile, LoginRequest, RegisterRequest } from '../types/api'
-import { auth, loadStoredRefreshToken, clearTokens } from '../api/client'
+import { auth, clearTokens } from '../api/client'
 
 interface AuthContextType {
   user: UserProfile | null
@@ -27,15 +27,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<UserProfile | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
-  // Try to restore session from stored refresh token on mount
+  // Try to restore session from httpOnly cookie on mount
   useEffect(() => {
     const restore = async () => {
-      const storedRefresh = loadStoredRefreshToken()
-      if (!storedRefresh) {
-        setIsLoading(false)
-        return
-      }
-
       try {
         const result = await auth.refresh()
         setUser(result.user)
