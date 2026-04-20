@@ -24,6 +24,7 @@ import { ArrowLeft, Send, Bot, Plus, MessageCircle, Trash2, Copy, Pencil } from 
 import toast from 'react-hot-toast'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import rehypeSanitize from 'rehype-sanitize'
 import { chat as chatApi, screening as screeningApi } from '../api/client'
 import type { ChatMessage, ScreeningResponse, ConversationResponse } from '../types/api'
 import { useAuth } from '../contexts/AuthContext'
@@ -514,7 +515,7 @@ function ChatPanel(props: ChatPanelProps) {
                     </div>
                   ) : msg.role === 'assistant' ? (
                     <div className="prose-chat">
-                      <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
+                      <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeSanitize]}>{msg.content}</ReactMarkdown>
                     </div>
                   ) : (
                     msg.content.split('\n').map((line, j) => (
