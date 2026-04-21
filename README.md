@@ -1,6 +1,6 @@
 # DepScreen — Frontend
 
-React client for the DepScreen depression-screening platform. Deployed to Vercel; the backend FastAPI service is in a sibling repo and lives on HuggingFace Spaces.
+React client for the DepScreen depression-screening platform. Deployed to Cloudflare Pages; the backend FastAPI service is in a sibling repo and lives on HuggingFace Spaces.
 
 Product overview + architecture: see the [backend README](https://github.com/halsabbah10/depscreen-backend#readme). This README covers the frontend only.
 
@@ -79,7 +79,7 @@ Vite's proxy config (`vite.config.ts`) forwards `/api/*` and `/health/*` to `htt
 
 | Var | Purpose |
 |---|---|
-| `VITE_API_URL` | Production backend URL (unused in dev — proxy covers it). Set in Vercel. |
+| `VITE_API_URL` | Production backend URL (unused in dev — proxy covers it). Set in Cloudflare Pages. |
 | `VITE_SENTRY_DSN` | Sentry DSN. Empty = Sentry no-ops. |
 | `VITE_SENTRY_ENVIRONMENT` | `development` / `preview` / `production`. |
 
@@ -145,7 +145,7 @@ frontend/
 ├── e2e/                        # Playwright specs + helpers + README
 ├── public/                     # Static assets served as-is
 ├── vite.config.ts              # Dev proxy + manualChunks for prod
-├── vercel.ts                   # Vercel deployment config (framework, headers)
+├── functions/                   # Cloudflare Pages Functions (API proxy)
 ├── tailwind.config.js
 ├── tsconfig.json               # src-only; e2e has its own tsconfig
 └── package.json
@@ -153,18 +153,19 @@ frontend/
 
 ---
 
-## Deployment (Vercel)
+## Deployment (Cloudflare Pages)
 
-`vercel.ts` at the repo root (typed Vercel config) declares:
+The frontend is deployed to Cloudflare Pages with the following setup:
 
-- Framework: **Vite**
-- Rewrites: `/api/*` and `/health/*` → the backend URL from `VITE_API_URL`
-- Edge headers: strict CSP, HSTS, `X-Content-Type-Options: nosniff`, `Referrer-Policy`, frame-deny
-- `chunkSizeWarningLimit: 700` KB (above the fat LLM-response chunks)
+- **Build command:** `npm run build`
+- **Output directory:** `dist`
+- **API proxy:** `functions/api/[[path]].ts` and `functions/health/[[path]].ts` forward `/api/*` and `/health/*` to the HuggingFace Spaces backend
+- **Security headers:** `public/_headers` defines strict CSP, HSTS, `X-Content-Type-Options: nosniff`, `Referrer-Policy`, frame-deny, `Permissions-Policy`
+- **Asset caching:** `/assets/*` cached with `max-age=31536000, immutable`
 
-`git push` triggers an automatic Vercel deploy. Preview URLs for every branch; production builds on pushes to `main`.
+`git push` triggers an automatic Cloudflare Pages deploy. Preview URLs for every branch; production builds on pushes to `main`.
 
-Vercel secrets (dashboard, never in the repo): `VITE_API_URL`, `VITE_SENTRY_DSN`, `VITE_SENTRY_ENVIRONMENT`.
+Cloudflare environment variables (dashboard, never in the repo): `VITE_API_URL`, `VITE_SENTRY_DSN`, `VITE_SENTRY_ENVIRONMENT`.
 
 ---
 

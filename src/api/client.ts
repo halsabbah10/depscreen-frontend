@@ -345,6 +345,7 @@ async function streamSSE(
   const response = await fetch(url, {
     method: 'POST',
     headers: authHeaders(),
+    credentials: 'include',
     body: JSON.stringify(body),
   })
 
@@ -565,6 +566,7 @@ export const patient = {
     const response = await fetch(`${API_BASE}/patient/documents/upload?${params}`, {
       method: 'POST',
       headers,
+      credentials: 'include',
       body: form,
     })
     return handleResponse(response)
@@ -715,6 +717,7 @@ export const patient = {
     const response = await fetch(`${API_BASE}/patient/profile/picture`, {
       method: 'POST',
       headers,
+      credentials: 'include',
       body: formData,
     })
     return handleResponse(response)

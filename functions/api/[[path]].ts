@@ -16,12 +16,9 @@ export const onRequest: PagesFunction = async (context) => {
     redirect: "follow",
   });
 
-  const responseHeaders = new Headers(response.headers);
-  responseHeaders.delete("set-cookie");
-
   return new Response(response.body, {
     status: response.status,
     statusText: response.statusText,
-    headers: responseHeaders,
+    headers: response.headers,
   });
 };

@@ -32,7 +32,7 @@ All notable changes to the DepScreen frontend. Dates in DD/MM/YYYY (Asia/Bahrain
 ## [2026-04-15] — Phase H: Enterprise hardening
 
 - **Sentry** error monitoring on the client — source-mapped stacks, session replay on errors.
-- **Vercel edge headers** — strict CSP, HSTS, `X-Content-Type-Options`, `Referrer-Policy`, frame-deny.
+- **Security headers** — strict CSP, HSTS, `X-Content-Type-Options`, `Referrer-Policy`, frame-deny (via Cloudflare Pages `_headers`).
 - **Dependency audit** in CI (`npm audit --omit=dev --audit-level=high`).
 
 ## [2026-04-15] — Phase G: A11y + mobile
