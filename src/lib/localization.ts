@@ -118,6 +118,8 @@ export const TOP_CRISIS_RESOURCES = CRISIS_RESOURCES_SORTED.slice(0, 4)
 // ── Safety Disclaimer ───────────────────────────────────────────────────────
 
 export const SAFETY_DISCLAIMER =
+  'This tool is a research prototype. It is not FDA-cleared, CE-marked, or approved ' +
+  'by any regulatory body. It is not a diagnostic instrument. ' +
   'This screening is NOT a medical diagnosis. The results represent statistical ' +
   'patterns detected by an AI model and should not be used as a substitute for ' +
   'professional mental health evaluation. If you or someone you know is ' +
@@ -125,7 +127,7 @@ export const SAFETY_DISCLAIMER =
   'or visit the Salmaniya Medical Complex Psychiatric Hospital emergency department.'
 
 export const SHORT_DISCLAIMER =
-  'Screening tool only — not a diagnostic instrument. If in crisis, call 999.'
+  'Research prototype — not a diagnostic instrument. If in crisis, call 999.'
 
 // ── Date / Time Formatting ──────────────────────────────────────────────────
 
