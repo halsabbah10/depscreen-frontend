@@ -160,7 +160,13 @@ export function ProfilePage() {
         relation: newContactRelation,
         is_primary: contacts.length === 0,
       })
-      setContacts(prev => [...prev, { ...result, id: result.contact_id } as unknown as EmergencyContact])
+      setContacts(prev => [...prev, {
+        id: result.contact_id,
+        contact_name: newContactName,
+        phone: newContactPhone,
+        relation: newContactRelation,
+        is_primary: contacts.length === 0,
+      }])
       setNewContactName('')
       setNewContactPhone('')
       toast.success('Emergency contact added.')

@@ -42,7 +42,7 @@ export function ResultPage() {
     setLoading(true)
     screeningApi.getById(screeningId)
       .then(setData)
-      .catch(err => setError(err.detail || 'Failed to load screening results.'))
+      .catch(err => setError(err instanceof Object && 'detail' in err ? (err as { detail: string }).detail : 'Failed to load screening results.'))
       .finally(() => setLoading(false))
   }, [screeningId])
 

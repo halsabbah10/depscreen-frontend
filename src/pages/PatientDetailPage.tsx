@@ -449,12 +449,14 @@ export function PatientDetailPage() {
 // ── Care Plan Tab (clinician CRUD) ────────────────────────────────────────────
 
 interface Goal {
+  _key: string
   text: string
   target_date?: string
   status?: string
 }
 
 interface Intervention {
+  _key: string
   name: string
   frequency?: string
   instructions?: string
@@ -494,6 +496,7 @@ function CarePlanTab({ patientId }: { patientId: string }) {
     setDescription(cp.description || '')
     setGoals(
       (cp.goals || []).map(g => ({
+        _key: crypto.randomUUID(),
         text: String(g.text ?? ''),
         target_date: g.target_date ? String(g.target_date) : undefined,
         status: g.status ? String(g.status) : undefined,
@@ -501,6 +504,7 @@ function CarePlanTab({ patientId }: { patientId: string }) {
     )
     setInterventions(
       (cp.interventions || []).map(i => ({
+        _key: crypto.randomUUID(),
         name: String(i.name ?? ''),
         frequency: i.frequency ? String(i.frequency) : undefined,
         instructions: i.instructions ? String(i.instructions) : undefined,
@@ -616,7 +620,7 @@ function CarePlanTab({ patientId }: { patientId: string }) {
             </label>
             <button
               type="button"
-              onClick={() => setGoals(g => [...g, { text: '', status: 'in_progress' }])}
+              onClick={() => setGoals(g => [...g, { _key: crypto.randomUUID(), text: '', status: 'in_progress' }])}
               className="text-xs text-primary hover:text-primary/80 inline-flex items-center gap-1 font-body"
             >
               <Plus className="w-3 h-3" /> Add goal
@@ -627,7 +631,7 @@ function CarePlanTab({ patientId }: { patientId: string }) {
               <p className="text-xs text-muted-foreground italic font-body">No goals yet. Add one to get started.</p>
             )}
             {goals.map((g, i) => (
-              <div key={i} className="flex gap-2 items-start">
+              <div key={g._key} className="flex gap-2 items-start">
                 <textarea
                   className="input py-2 flex-1 resize-none text-sm"
                   rows={2}
@@ -663,7 +667,7 @@ function CarePlanTab({ patientId }: { patientId: string }) {
             </label>
             <button
               type="button"
-              onClick={() => setInterventions(ints => [...ints, { name: '', frequency: '', instructions: '' }])}
+              onClick={() => setInterventions(ints => [...ints, { _key: crypto.randomUUID(), name: '', frequency: '', instructions: '' }])}
               className="text-xs text-primary hover:text-primary/80 inline-flex items-center gap-1 font-body"
             >
               <Plus className="w-3 h-3" /> Add intervention
@@ -676,7 +680,7 @@ function CarePlanTab({ patientId }: { patientId: string }) {
               </p>
             )}
             {interventions.map((intr, i) => (
-              <div key={i} className="border border-border rounded-lg p-3 space-y-2">
+              <div key={intr._key} className="border border-border rounded-lg p-3 space-y-2">
                 <div className="flex gap-2">
                   <input
                     type="text"
@@ -985,7 +989,7 @@ function ProfileTab({ patientId }: { patientId: string }) {
                     )}
                     {ec.relation && <span className="text-xs text-muted-foreground font-body">· {ec.relation}</span>}
                   </div>
-                  <p className="text-xs text-muted-foreground font-body mt-0.5 font-mono">{ec.phone}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5 font-mono">{ec.phone}</p>
                 </div>
               </div>
             ))}
