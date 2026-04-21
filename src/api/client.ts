@@ -669,7 +669,7 @@ export const patient = {
   },
 
   async markAllNotificationsRead(): Promise<void> {
-    return post('/patient/notifications/read-all')
+    return patch('/patient/notifications/read-all')
   },
 
   // Clinician direct messages
