@@ -75,13 +75,47 @@ async function handleResponse<T>(response: Response): Promise<T> {
   return response.json()
 }
 
+// ── Retry wrapper for transient server errors ───────────────────────────────
+
+async function fetchWithRetry(
+  input: RequestInfo | URL,
+  init?: RequestInit,
+  maxRetries = 3,
+  baseDelayMs = 1000,
+): Promise<Response> {
+  const method = (init?.method ?? 'GET').toUpperCase()
+
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    const response = await fetch(input, init)
+
+    // Success or client error — return immediately
+    if (response.ok || response.status < 500) return response
+
+    // For non-GET, only retry gateway errors (502/503/504)
+    if (method !== 'GET' && ![502, 503, 504].includes(response.status)) {
+      return response
+    }
+
+    // Last attempt — return the error response
+    if (attempt === maxRetries) return response
+
+    // Exponential backoff before retry
+    await new Promise(r => setTimeout(r, baseDelayMs * Math.pow(2, attempt)))
+  }
+
+  // Unreachable, but satisfies TypeScript
+  throw new Error('fetchWithRetry: unreachable')
+}
+
+// ── HTTP Helpers (use fetchWithRetry for automatic backoff on 5xx) ───────────
+
 async function get<T>(path: string): Promise<T> {
-  const response = await fetch(`${API_BASE}${path}`, { headers: authHeaders() })
+  const response = await fetchWithRetry(`${API_BASE}${path}`, { headers: authHeaders() })
   return handleResponse<T>(response)
 }
 
 async function post<T>(path: string, body?: unknown): Promise<T> {
-  const response = await fetch(`${API_BASE}${path}`, {
+  const response = await fetchWithRetry(`${API_BASE}${path}`, {
     method: 'POST',
     headers: authHeaders(),
     body: body !== undefined ? JSON.stringify(body) : undefined,
@@ -90,7 +124,7 @@ async function post<T>(path: string, body?: unknown): Promise<T> {
 }
 
 async function put<T>(path: string, body?: unknown): Promise<T> {
-  const response = await fetch(`${API_BASE}${path}`, {
+  const response = await fetchWithRetry(`${API_BASE}${path}`, {
     method: 'PUT',
     headers: authHeaders(),
     body: body !== undefined ? JSON.stringify(body) : undefined,
@@ -100,7 +134,7 @@ async function put<T>(path: string, body?: unknown): Promise<T> {
 
 async function patch<T>(path: string, params?: Record<string, string>): Promise<T> {
   const query = params ? '?' + new URLSearchParams(params).toString() : ''
-  const response = await fetch(`${API_BASE}${path}${query}`, {
+  const response = await fetchWithRetry(`${API_BASE}${path}${query}`, {
     method: 'PATCH',
     headers: authHeaders(),
   })
@@ -108,7 +142,7 @@ async function patch<T>(path: string, params?: Record<string, string>): Promise<
 }
 
 async function patchJson<T>(path: string, body: unknown): Promise<T> {
-  const response = await fetch(`${API_BASE}${path}`, {
+  const response = await fetchWithRetry(`${API_BASE}${path}`, {
     method: 'PATCH',
     headers: authHeaders(),
     body: JSON.stringify(body),
@@ -117,7 +151,7 @@ async function patchJson<T>(path: string, body: unknown): Promise<T> {
 }
 
 async function del<T>(path: string): Promise<T> {
-  const response = await fetch(`${API_BASE}${path}`, {
+  const response = await fetchWithRetry(`${API_BASE}${path}`, {
     method: 'DELETE',
     headers: authHeaders(),
   })
@@ -380,6 +414,7 @@ async function streamSSE(
       if (!trimmed.startsWith('data: ')) continue
       const data = trimmed.slice(6)
       if (data === '[DONE]') return
+      if (data === '[HEARTBEAT]') continue
       // Unescape newlines that were escaped server-side
       const unescaped = data.replace(/\\n/g, '\n')
       onChunk(unescaped)
