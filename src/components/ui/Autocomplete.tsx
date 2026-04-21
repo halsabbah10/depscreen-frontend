@@ -124,6 +124,18 @@ export function Autocomplete({
         className="w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm font-body focus:outline-none focus:ring-2 focus:ring-primary/30"
         autoComplete="off"
       />
+      <div
+        role="status"
+        aria-live="polite"
+        className="sr-only"
+      >
+        {loading
+          ? 'Searching...'
+          : suggestions.length > 0 && open
+            ? `${suggestions.length} suggestion${suggestions.length !== 1 ? 's' : ''} available`
+            : ''
+        }
+      </div>
       {open && (loading || suggestions.length > 0) && (
         <div
           role="listbox"
