@@ -14,13 +14,14 @@ import { motion } from 'framer-motion'
 import toast from 'react-hot-toast'
 import {
   User, Shield, Download, AlertTriangle, Heart, Pill,
-  FileText, Phone, Camera, CalendarCheck,
+  FileText, Phone, Camera, CalendarCheck, Upload,
 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { patient as patientApi } from '../api/client'
 import type {
   MedicationResponse, AllergyResponse, DiagnosisResponse,
   EmergencyContact, ProfileUpdate, ScreeningScheduleResponse,
+  PatientDocument,
 } from '../types/api'
 import { BreathingCircle, BreathingDot } from '../components/ui/BreathingCircle'
 import { PageTransition } from '../components/ui/PageTransition'
@@ -70,6 +71,13 @@ export function ProfilePage() {
   const [newAllergen, setNewAllergen] = useState('')
   const [newAllergySeverity, setNewAllergySeverity] = useState('moderate')
 
+  // Documents
+  const [documents, setDocuments] = useState<PatientDocument[]>([])
+  const [docFile, setDocFile] = useState<File | null>(null)
+  const [docType, setDocType] = useState('journal_entry')
+  const [docTitle, setDocTitle] = useState('')
+  const [docUploading, setDocUploading] = useState(false)
+
   // New contact form
   const [newContactName, setNewContactName] = useState('')
   const [newContactPhone, setNewContactPhone] = useState('')
@@ -96,6 +104,7 @@ export function ProfilePage() {
         patientApi.getMedications().then(setMedications).catch(() => []),
         patientApi.getAllergies().then(setAllergies).catch(() => []),
         patientApi.getDiagnoses().then(setDiagnoses).catch(() => []),
+        patientApi.getDocuments().then(setDocuments).catch(() => []),
       ]).finally(() => setMedicalLoading(false))
     }
     if (tab === 'contacts' && isPatient) {
@@ -157,6 +166,56 @@ export function ProfilePage() {
       const errorDetail = err instanceof Object && 'detail' in err ? (err as { detail: string }).detail : null
       toast.error(errorDetail || 'Could not add allergy.')
     }
+  }
+
+  const handleUploadDocument = async () => {
+    if (!docFile || !docTitle.trim()) return
+    if (docFile.size > 10 * 1024 * 1024) {
+      toast.error('File must be smaller than 10 MB.')
+      return
+    }
+    setDocUploading(true)
+    try {
+      const result = await patientApi.uploadDocumentFile(docFile, docTitle.trim(), docType)
+      setDocuments(prev => [{
+        id: result.document_id,
+        title: docTitle.trim(),
+        doc_type: docType,
+        created_at: new Date().toISOString(),
+        content_preview: '',
+        processing_status: result.status === 'processing' ? 'processing' : 'ready',
+      }, ...prev])
+      setDocFile(null)
+      setDocTitle('')
+      setDocType('journal_entry')
+      // Reset file input
+      const fileInput = document.getElementById('profile-doc-file') as HTMLInputElement | null
+      if (fileInput) fileInput.value = ''
+      toast.success('Document uploaded.')
+    } catch (err: unknown) {
+      const detail = err instanceof Object && 'detail' in err ? (err as { detail: string }).detail : null
+      toast.error(detail || 'Could not upload document.')
+    } finally {
+      setDocUploading(false)
+    }
+  }
+
+  const handleDeleteDocument = async (docId: string, title: string) => {
+    setConfirmDialog({
+      open: true,
+      title: 'Remove document',
+      description: `Remove document "${title}"?`,
+      variant: 'destructive',
+      onConfirm: async () => {
+        try {
+          await patientApi.deleteDocument(docId)
+          setDocuments(prev => prev.filter(d => d.id !== docId))
+          toast.success('Document removed.')
+        } catch {
+          toast.error('Could not remove document.')
+        }
+      },
+    })
   }
 
   const handleAddContact = async () => {
@@ -566,6 +625,107 @@ export function ProfilePage() {
                         ))}
                       </div>
                     )}
+                  </div>
+
+                  {/* Documents */}
+                  <div className="card-warm p-5">
+                    <h3 className="font-display text-lg text-foreground mb-3 flex items-center gap-2">
+                      <Upload className="w-4 h-4 text-primary" /> Documents
+                    </h3>
+
+                    {documents.length === 0 ? (
+                      <p className="text-sm text-muted-foreground font-body mb-4">No documents uploaded yet.</p>
+                    ) : (
+                      <div className="space-y-2 mb-4">
+                        {documents.map(d => (
+                          <div key={d.id} className="flex items-center justify-between py-2 border-b border-border last:border-0">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <FileText className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                              <div className="min-w-0">
+                                <span className="text-sm font-medium font-body block truncate">{d.title}</span>
+                                <span className="text-xs text-muted-foreground font-body">{d.doc_type.replace(/_/g, ' ')}</span>
+                              </div>
+                              {d.processing_status === 'processing' && (
+                                <span className="text-xs px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 font-body animate-pulse">
+                                  Processing
+                                </span>
+                              )}
+                              {d.processing_status === 'ready' && (
+                                <span className="text-xs px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 font-body">
+                                  Ready
+                                </span>
+                              )}
+                              {d.processing_status === 'failed' && (
+                                <span className="text-xs px-1.5 py-0.5 rounded bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-400 font-body">
+                                  Failed
+                                </span>
+                              )}
+                            </div>
+                            <button
+                              onClick={() => handleDeleteDocument(d.id, d.title)}
+                              className="text-xs text-muted-foreground hover:text-destructive transition-colors font-body shrink-0 ml-2"
+                            >
+                              Remove
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Upload form */}
+                    <div className="space-y-2 mt-3">
+                      <div className="grid grid-cols-12 gap-2">
+                        <input
+                          className="input col-span-6"
+                          placeholder="Document title"
+                          value={docTitle}
+                          onChange={e => setDocTitle(e.target.value)}
+                        />
+                        <select
+                          className="input col-span-6"
+                          value={docType}
+                          onChange={e => setDocType(e.target.value)}
+                        >
+                          <option value="phq9">PHQ-9</option>
+                          <option value="gad7">GAD-7</option>
+                          <option value="medication_list">Medication List</option>
+                          <option value="journal_entry">Journal Entry</option>
+                          <option value="previous_diagnosis">Previous Diagnosis</option>
+                          <option value="medical_report">Medical Report</option>
+                          <option value="therapy_notes">Therapy Notes</option>
+                          <option value="mood_diary">Mood Diary</option>
+                          <option value="sleep_log">Sleep Log</option>
+                          <option value="wellness_plan">Wellness Plan</option>
+                          <option value="other">Other</option>
+                        </select>
+                      </div>
+                      <div className="grid grid-cols-12 gap-2">
+                        <input
+                          id="profile-doc-file"
+                          type="file"
+                          accept=".pdf,.txt,.md,.csv,application/pdf,text/plain"
+                          className="col-span-9 block w-full text-sm text-muted-foreground font-body
+                            file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0
+                            file:text-xs file:font-medium file:bg-primary/10 file:text-primary
+                            hover:file:bg-primary/15 file:cursor-pointer cursor-pointer"
+                          onChange={e => {
+                            const f = e.target.files?.[0] || null
+                            setDocFile(f)
+                            if (f && !docTitle) setDocTitle(f.name.replace(/\.[^/.]+$/, ''))
+                          }}
+                        />
+                        <button
+                          onClick={handleUploadDocument}
+                          disabled={!docFile || !docTitle.trim() || docUploading}
+                          className="btn-outline text-xs col-span-3"
+                        >
+                          {docUploading ? 'Uploading...' : 'Upload'}
+                        </button>
+                      </div>
+                      <p className="text-xs text-muted-foreground font-body">
+                        Supported: PDF, .txt, .md, .csv (max 10 MB). PDFs are parsed server-side with OCR fallback for scans.
+                      </p>
+                    </div>
                   </div>
                 </>
               )}

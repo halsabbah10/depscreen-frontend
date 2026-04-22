@@ -219,6 +219,7 @@ export interface PatientDocument {
   title: string
   created_at: string
   content_preview: string
+  processing_status?: 'processing' | 'ready' | 'failed'
 }
 
 export interface EmergencyContact {

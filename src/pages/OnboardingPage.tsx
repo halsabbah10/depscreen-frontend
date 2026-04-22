@@ -116,6 +116,10 @@ export function OnboardingPage() {
         else if (nameL.includes('gad')) docType = 'gad7'
         else if (nameL.includes('med')) docType = 'medication_list'
         else if (nameL.includes('diag')) docType = 'previous_diagnosis'
+        else if (nameL.includes('report') || nameL.includes('lab') || nameL.includes('results')) docType = 'medical_report'
+        else if (nameL.includes('therapy') || nameL.includes('session') || nameL.includes('notes')) docType = 'therapy_notes'
+        else if (nameL.includes('mood') || nameL.includes('diary')) docType = 'mood_diary'
+        else if (nameL.includes('sleep') || nameL.includes('log')) docType = 'sleep_log'
 
         const title = file.name.replace(/\.[^/.]+$/, '')
         const isPdf = nameL.endsWith('.pdf') || file.type === 'application/pdf'

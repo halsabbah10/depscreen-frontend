@@ -595,6 +595,10 @@ export const patient = {
     return get<PatientDocument[]>('/patient/documents')
   },
 
+  async deleteDocument(docId: string): Promise<void> {
+    await del(`/patient/documents/${docId}`)
+  },
+
   async getTrends(days = 90): Promise<SymptomTrend> {
     return get<SymptomTrend>(`/patient/trends?days=${days}`)
   },
