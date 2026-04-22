@@ -5,6 +5,7 @@
  */
 
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react'
+import { ConfirmDialog } from '../components/ui/ConfirmDialog'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Calendar, Clock, MapPin, User as UserIcon, Plus, X, CheckCircle2, XCircle, AlertCircle, ChevronLeft, ChevronRight, List, LayoutGrid } from 'lucide-react'
 import toast from 'react-hot-toast'
@@ -57,6 +58,13 @@ export function AppointmentsPage() {
   const [loading, setLoading] = useState(true)
   const [showCreate, setShowCreate] = useState(false)
   const [refDate, setRefDate] = useState(() => new Date())
+  const [confirmDialog, setConfirmDialog] = useState<{
+    open: boolean
+    title: string
+    description: string
+    onConfirm: () => void
+    variant?: 'default' | 'destructive'
+  }>({ open: false, title: '', description: '', onConfirm: () => {} })
 
   const reload = useCallback(() => {
     setLoading(true)
@@ -93,15 +101,22 @@ export function AppointmentsPage() {
     }
   }
 
-  const handleCancel = async (id: string) => {
-    if (!confirm('Cancel this appointment?')) return
-    try {
-      await dashboardApi.deleteAppointment(id)
-      toast.success('Appointment cancelled')
-      reload()
-    } catch {
-      toast.error('Could not cancel appointment.')
-    }
+  const handleCancel = (id: string) => {
+    setConfirmDialog({
+      open: true,
+      title: 'Cancel appointment',
+      description: 'Cancel this appointment? This action cannot be undone.',
+      variant: 'destructive',
+      onConfirm: async () => {
+        try {
+          await dashboardApi.deleteAppointment(id)
+          toast.success('Appointment cancelled')
+          reload()
+        } catch {
+          toast.error('Could not cancel appointment.')
+        }
+      },
+    })
   }
 
   const viewLabels: Record<View, string> = { list: 'List', week: 'Week', month: 'Month' }
@@ -292,6 +307,11 @@ export function AppointmentsPage() {
           }}
         />
       )}
+
+      <ConfirmDialog
+        {...confirmDialog}
+        onOpenChange={open => setConfirmDialog(prev => ({ ...prev, open }))}
+      />
     </PageTransition>
   )
 }
@@ -561,7 +581,7 @@ interface CalendarViewProps {
 
 interface WeekViewProps extends CalendarViewProps {
   onStatusChange: (id: string, status: string) => Promise<void>
-  onCancel: (id: string) => Promise<void>
+  onCancel: (id: string) => void
 }
 
 function WeekCalendarView({ refDate, setRefDate, appointments, loading, onStatusChange, onCancel }: WeekViewProps) {
@@ -670,7 +690,7 @@ function WeekAppointmentChip({
 }: {
   appt: AppointmentResponse
   onStatusChange: (id: string, status: string) => Promise<void>
-  onCancel: (id: string) => Promise<void>
+  onCancel: (id: string) => void
 }) {
   const [open, setOpen] = useState(false)
   const time = formatTime(appt.scheduled_at)

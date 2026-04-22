@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { ConfirmDialog } from '../components/ui/ConfirmDialog'
 import { useParams, Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import {
@@ -1031,6 +1032,13 @@ function MedicationsSection({ patientId }: { patientId: string }) {
   const [adding, setAdding] = useState(false)
   const [form, setForm] = useState<MedicationCreate>(emptyMedForm())
   const [submitting, setSubmitting] = useState(false)
+  const [confirmDialog, setConfirmDialog] = useState<{
+    open: boolean
+    title: string
+    description: string
+    onConfirm: () => void
+    variant?: 'default' | 'destructive'
+  }>({ open: false, title: '', description: '', onConfirm: () => {} })
 
   const reload = async () => {
     try {
@@ -1105,20 +1113,28 @@ function MedicationsSection({ patientId }: { patientId: string }) {
     }
   }
 
-  const remove = async (m: MedicationResponse) => {
-    if (!confirm(`Mark "${m.name}" as inactive? This keeps the record but removes it from the active list.`)) return
-    try {
-      await dashboard.deactivatePatientMedication(m.id)
-      toast.success('Medication marked inactive.')
-      await reload()
-    } catch {
-      toast.error('Could not update medication.')
-    }
+  const remove = (m: MedicationResponse) => {
+    setConfirmDialog({
+      open: true,
+      title: 'Mark medication inactive',
+      description: `Mark "${m.name}" as inactive? This keeps the record but removes it from the active list.`,
+      variant: 'destructive',
+      onConfirm: async () => {
+        try {
+          await dashboard.deactivatePatientMedication(m.id)
+          toast.success('Medication marked inactive.')
+          await reload()
+        } catch {
+          toast.error('Could not update medication.')
+        }
+      },
+    })
   }
 
   const formOpen = adding || editingId !== null
 
   return (
+    <>
     <Section icon={Pill} title={`Medications (${meds.length})`}>
       {meds.length === 0 && !formOpen ? (
         <p className="text-sm text-muted-foreground font-body italic mb-3">No medications on record.</p>
@@ -1282,6 +1298,11 @@ function MedicationsSection({ patientId }: { patientId: string }) {
         </div>
       )}
     </Section>
+    <ConfirmDialog
+      {...confirmDialog}
+      onOpenChange={open => setConfirmDialog(prev => ({ ...prev, open }))}
+    />
+    </>
   )
 }
 
@@ -1323,6 +1344,13 @@ function ScreeningScheduleSection({ patientId }: { patientId: string }) {
   const [customDays, setCustomDays] = useState<number>(14)
   const [preferredTime, setPreferredTime] = useState<string>('09:00')
   const [submitting, setSubmitting] = useState(false)
+  const [confirmDialog, setConfirmDialog] = useState<{
+    open: boolean
+    title: string
+    description: string
+    onConfirm: () => void
+    variant?: 'default' | 'destructive'
+  }>({ open: false, title: '', description: '', onConfirm: () => {} })
 
   const reload = async () => {
     try {
@@ -1371,19 +1399,27 @@ function ScreeningScheduleSection({ patientId }: { patientId: string }) {
     }
   }
 
-  const clear = async () => {
-    if (!confirm('Stop the recurring check-ins for this patient? They can set up their own any time.')) return
-    try {
-      await dashboard.deactivatePatientScreeningSchedule(patientId)
-      toast.success('Recurring check-ins stopped.')
-      await reload()
-    } catch (err) {
-      const detail = err instanceof Object && 'detail' in err ? (err as { detail: string }).detail : null
-      toast.error(detail || 'Could not stop schedule.')
-    }
+  const clear = () => {
+    setConfirmDialog({
+      open: true,
+      title: 'Stop recurring check-ins',
+      description: 'Stop the recurring check-ins for this patient? They can set up their own any time.',
+      variant: 'destructive',
+      onConfirm: async () => {
+        try {
+          await dashboard.deactivatePatientScreeningSchedule(patientId)
+          toast.success('Recurring check-ins stopped.')
+          await reload()
+        } catch (err) {
+          const detail = err instanceof Object && 'detail' in err ? (err as { detail: string }).detail : null
+          toast.error(detail || 'Could not stop schedule.')
+        }
+      },
+    })
   }
 
   return (
+    <>
     <Section icon={Calendar} title="Recurring Check-ins">
       {!editing && schedule && (
         <>
@@ -1501,6 +1537,11 @@ function ScreeningScheduleSection({ patientId }: { patientId: string }) {
         </div>
       )}
     </Section>
+    <ConfirmDialog
+      {...confirmDialog}
+      onOpenChange={open => setConfirmDialog(prev => ({ ...prev, open }))}
+    />
+    </>
   )
 }
 
@@ -1668,6 +1709,13 @@ function DiagnosesSection({ patientId }: { patientId: string }) {
   const [adding, setAdding] = useState(false)
   const [form, setForm] = useState<DiagnosisCreate>(emptyDxForm())
   const [submitting, setSubmitting] = useState(false)
+  const [confirmDialog, setConfirmDialog] = useState<{
+    open: boolean
+    title: string
+    description: string
+    onConfirm: () => void
+    variant?: 'default' | 'destructive'
+  }>({ open: false, title: '', description: '', onConfirm: () => {} })
 
   const reload = async () => {
     try {
@@ -1730,15 +1778,22 @@ function DiagnosesSection({ patientId }: { patientId: string }) {
     }
   }
 
-  const remove = async (dx: DiagnosisResponse) => {
-    if (!confirm(`Remove the diagnosis "${dx.condition}" from this patient's record?`)) return
-    try {
-      await dashboard.deletePatientDiagnosis(dx.id)
-      toast.success('Diagnosis removed.')
-      await reload()
-    } catch {
-      toast.error('Could not remove diagnosis.')
-    }
+  const remove = (dx: DiagnosisResponse) => {
+    setConfirmDialog({
+      open: true,
+      title: 'Remove diagnosis',
+      description: `Remove the diagnosis "${dx.condition}" from this patient's record?`,
+      variant: 'destructive',
+      onConfirm: async () => {
+        try {
+          await dashboard.deletePatientDiagnosis(dx.id)
+          toast.success('Diagnosis removed.')
+          await reload()
+        } catch {
+          toast.error('Could not remove diagnosis.')
+        }
+      },
+    })
   }
 
   // When the clinician picks an ICD-10 suggestion, populate both fields.
@@ -1750,6 +1805,7 @@ function DiagnosesSection({ patientId }: { patientId: string }) {
   }
 
   return (
+    <>
     <Section icon={Heart} title={`Diagnoses (${diagnoses.length})`}>
       {diagnoses.length === 0 && !adding ? (
         <p className="text-sm text-muted-foreground font-body italic mb-3">No diagnoses on record.</p>
@@ -1899,6 +1955,11 @@ function DiagnosesSection({ patientId }: { patientId: string }) {
         </div>
       )}
     </Section>
+    <ConfirmDialog
+      {...confirmDialog}
+      onOpenChange={open => setConfirmDialog(prev => ({ ...prev, open }))}
+    />
+    </>
   )
 }
 

@@ -18,6 +18,7 @@
  */
 
 import { useEffect, useState, useRef, useMemo } from 'react'
+import { ConfirmDialog } from '../components/ui/ConfirmDialog'
 import { useLocation, useNavigate, Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ArrowLeft, Send, Bot, Plus, MessageCircle, Trash2, Copy, Pencil } from 'lucide-react'
@@ -55,6 +56,13 @@ export function ChatPage() {
   const [conversations, setConversations] = useState<ConversationResponse[]>([])
   const [renamingId, setRenamingId] = useState<string | null>(null)
   const [renameValue, setRenameValue] = useState('')
+  const [confirmDialog, setConfirmDialog] = useState<{
+    open: boolean
+    title: string
+    description: string
+    onConfirm: () => void
+    variant?: 'default' | 'destructive'
+  }>({ open: false, title: '', description: '', onConfirm: () => {} })
   const bottomRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   // Track conversation IDs we've just created locally so the reload-messages
@@ -113,19 +121,26 @@ export function ChatPage() {
     inputRef.current?.focus()
   }
 
-  const handleDeleteConversation = async (convId: string, e: React.MouseEvent) => {
+  const handleDeleteConversation = (convId: string, e: React.MouseEvent) => {
     e.stopPropagation()
-    if (!confirm('Delete this conversation? This cannot be undone.')) return
-    try {
-      await chatApi.archiveConversation(convId)
-      setConversations(prev => prev.filter(c => c.id !== convId))
-      if (conversationId === convId) {
-        navigate('/chat', { replace: true })
-      }
-      toast.success('Conversation deleted.')
-    } catch {
-      toast.error('Could not delete conversation.')
-    }
+    setConfirmDialog({
+      open: true,
+      title: 'Delete conversation',
+      description: 'Delete this conversation? This cannot be undone.',
+      variant: 'destructive',
+      onConfirm: async () => {
+        try {
+          await chatApi.archiveConversation(convId)
+          setConversations(prev => prev.filter(c => c.id !== convId))
+          if (conversationId === convId) {
+            navigate('/chat', { replace: true })
+          }
+          toast.success('Conversation deleted.')
+        } catch {
+          toast.error('Could not delete conversation.')
+        }
+      },
+    })
   }
 
   const handleStartRename = (conv: ConversationResponse, e: React.MouseEvent) => {
@@ -419,6 +434,11 @@ export function ChatPage() {
           onCopyMessage={handleCopyMessage}
         />
       </div>
+
+      <ConfirmDialog
+        {...confirmDialog}
+        onOpenChange={open => setConfirmDialog(prev => ({ ...prev, open }))}
+      />
     </PageTransition>
   )
 }

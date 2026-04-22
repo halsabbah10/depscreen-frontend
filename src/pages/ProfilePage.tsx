@@ -9,6 +9,7 @@
  */
 
 import { useState, useEffect } from 'react'
+import { ConfirmDialog } from '../components/ui/ConfirmDialog'
 import { motion } from 'framer-motion'
 import toast from 'react-hot-toast'
 import {
@@ -35,6 +36,13 @@ export function ProfilePage() {
   const [avatarBusy, setAvatarBusy] = useState(false)
   // File the user just picked. Non-null -> AvatarCropModal is open.
   const [pendingCropFile, setPendingCropFile] = useState<File | null>(null)
+  const [confirmDialog, setConfirmDialog] = useState<{
+    open: boolean
+    title: string
+    description: string
+    onConfirm: () => void
+    variant?: 'default' | 'destructive'
+  }>({ open: false, title: '', description: '', onConfirm: () => {} })
 
   // Profile form
   const [fullName, setFullName] = useState(user?.full_name || '')
@@ -272,19 +280,26 @@ export function ProfilePage() {
             <p className="text-sm text-muted-foreground font-body">{user?.email}</p>
             {user?.profile_picture_url && !avatarBusy && (
               <button
-                onClick={async () => {
-                  if (!confirm('Remove your profile picture?')) return
-                  setAvatarBusy(true)
-                  try {
-                    await patientApi.deleteProfilePicture()
-                    toast.success('Picture removed.')
-                    await refreshUser()
-                  } catch (err) {
-                    const detail = err instanceof Object && 'detail' in err ? (err as { detail: string }).detail : null
-                    toast.error(detail || 'Could not remove picture.')
-                  } finally {
-                    setAvatarBusy(false)
-                  }
+                onClick={() => {
+                  setConfirmDialog({
+                    open: true,
+                    title: 'Remove profile picture',
+                    description: 'Remove your profile picture?',
+                    variant: 'destructive',
+                    onConfirm: async () => {
+                      setAvatarBusy(true)
+                      try {
+                        await patientApi.deleteProfilePicture()
+                        toast.success('Picture removed.')
+                        await refreshUser()
+                      } catch (err) {
+                        const detail = err instanceof Object && 'detail' in err ? (err as { detail: string }).detail : null
+                        toast.error(detail || 'Could not remove picture.')
+                      } finally {
+                        setAvatarBusy(false)
+                      }
+                    },
+                  })
                 }}
                 className="text-xs text-muted-foreground hover:text-rose-600 transition-colors mt-1 font-body"
               >
@@ -430,15 +445,22 @@ export function ProfilePage() {
                               {m.frequency && <span className="text-xs text-muted-foreground ml-1 font-body">· {m.frequency}</span>}
                             </div>
                             <button
-                              onClick={async () => {
-                                if (!confirm(`Remove medication "${m.name}"?`)) return
-                                try {
-                                  await patientApi.deleteMedication(m.id)
-                                  setMedications(prev => prev.filter(x => x.id !== m.id))
-                                  toast.success('Medication removed.')
-                                } catch {
-                                  toast.error('Could not remove medication.')
-                                }
+                              onClick={() => {
+                                setConfirmDialog({
+                                  open: true,
+                                  title: 'Remove medication',
+                                  description: `Remove medication "${m.name}"?`,
+                                  variant: 'destructive',
+                                  onConfirm: async () => {
+                                    try {
+                                      await patientApi.deleteMedication(m.id)
+                                      setMedications(prev => prev.filter(x => x.id !== m.id))
+                                      toast.success('Medication removed.')
+                                    } catch {
+                                      toast.error('Could not remove medication.')
+                                    }
+                                  },
+                                })
                               }}
                               className="text-xs text-muted-foreground hover:text-destructive transition-colors font-body"
                             >
@@ -483,15 +505,22 @@ export function ProfilePage() {
                               )}
                             </div>
                             <button
-                              onClick={async () => {
-                                if (!confirm(`Remove allergy "${a.allergen}"?`)) return
-                                try {
-                                  await patientApi.deleteAllergy(a.id)
-                                  setAllergies(prev => prev.filter(x => x.id !== a.id))
-                                  toast.success('Allergy removed.')
-                                } catch {
-                                  toast.error('Could not remove allergy.')
-                                }
+                              onClick={() => {
+                                setConfirmDialog({
+                                  open: true,
+                                  title: 'Remove allergy',
+                                  description: `Remove allergy "${a.allergen}"?`,
+                                  variant: 'destructive',
+                                  onConfirm: async () => {
+                                    try {
+                                      await patientApi.deleteAllergy(a.id)
+                                      setAllergies(prev => prev.filter(x => x.id !== a.id))
+                                      toast.success('Allergy removed.')
+                                    } catch {
+                                      toast.error('Could not remove allergy.')
+                                    }
+                                  },
+                                })
                               }}
                               className="text-xs text-muted-foreground hover:text-destructive transition-colors font-body"
                             >
@@ -566,15 +595,22 @@ export function ProfilePage() {
                         {c.is_primary && <span className="text-xs text-primary ml-2 font-body">Primary</span>}
                       </div>
                       <button
-                        onClick={async () => {
-                          if (!confirm(`Remove emergency contact "${c.contact_name}"?`)) return
-                          try {
-                            await patientApi.removeEmergencyContact(c.id)
-                            setContacts(prev => prev.filter(x => x.id !== c.id))
-                            toast.success('Contact removed.')
-                          } catch {
-                            toast.error('Could not remove contact.')
-                          }
+                        onClick={() => {
+                          setConfirmDialog({
+                            open: true,
+                            title: 'Remove emergency contact',
+                            description: `Remove emergency contact "${c.contact_name}"?`,
+                            variant: 'destructive',
+                            onConfirm: async () => {
+                              try {
+                                await patientApi.removeEmergencyContact(c.id)
+                                setContacts(prev => prev.filter(x => x.id !== c.id))
+                                toast.success('Contact removed.')
+                              } catch {
+                                toast.error('Could not remove contact.')
+                              }
+                            },
+                          })
                         }}
                         className="text-xs text-muted-foreground hover:text-destructive transition-colors font-body"
                       >
@@ -665,16 +701,23 @@ export function ProfilePage() {
                       and you can come back whenever you're ready.
                     </p>
                     <button
-                      onClick={async () => {
-                        if (!confirm("Would you like to pause your account? You can come back whenever you want — your data stays safe.")) return
-                        try {
-                          await patientApi.deactivateAccount()
-                          toast.success('Account paused. Take care of yourself.')
-                          logout()
-                        } catch (err: unknown) {
-                          const detail = err instanceof Object && 'detail' in err ? (err as { detail: string }).detail : null
-                          toast.error(detail || 'Could not pause your account. Please try again.')
-                        }
+                      onClick={() => {
+                        setConfirmDialog({
+                          open: true,
+                          title: 'Pause your account',
+                          description: "Would you like to pause your account? You can come back whenever you want — your data stays safe.",
+                          variant: 'default',
+                          onConfirm: async () => {
+                            try {
+                              await patientApi.deactivateAccount()
+                              toast.success('Account paused. Take care of yourself.')
+                              logout()
+                            } catch (err: unknown) {
+                              const detail = err instanceof Object && 'detail' in err ? (err as { detail: string }).detail : null
+                              toast.error(detail || 'Could not pause your account. Please try again.')
+                            }
+                          },
+                        })
                       }}
                       className="btn-outline w-full"
                     >
@@ -715,6 +758,11 @@ export function ProfilePage() {
           }}
         />
       )}
+
+      <ConfirmDialog
+        {...confirmDialog}
+        onOpenChange={open => setConfirmDialog(prev => ({ ...prev, open }))}
+      />
     </PageTransition>
   )
 }
@@ -730,6 +778,13 @@ function ScreeningScheduleCard() {
   const [frequency, setFrequency] = useState<string>('weekly')
   const [dayOfWeek, setDayOfWeek] = useState<number>(1) // Monday
   const [preferredTime, setPreferredTime] = useState<string>('09:00')
+  const [confirmDialog, setConfirmDialog] = useState<{
+    open: boolean
+    title: string
+    description: string
+    onConfirm: () => void
+    variant?: 'default' | 'destructive'
+  }>({ open: false, title: '', description: '', onConfirm: () => {} })
 
   useEffect(() => {
     patientApi
@@ -768,19 +823,26 @@ function ScreeningScheduleCard() {
     }
   }
 
-  const handleTurnOff = async () => {
+  const handleTurnOff = () => {
     if (!schedule) return
-    if (!confirm('Turn off check-in reminders? You can re-enable them anytime.')) return
-    setSaving(true)
-    try {
-      await patientApi.deleteScreeningSchedule(schedule.id)
-      setSchedule(null)
-      toast.success('Reminders turned off.')
-    } catch {
-      toast.error('Could not turn off reminders.')
-    } finally {
-      setSaving(false)
-    }
+    setConfirmDialog({
+      open: true,
+      title: 'Turn off reminders',
+      description: 'Turn off check-in reminders? You can re-enable them anytime.',
+      variant: 'default',
+      onConfirm: async () => {
+        setSaving(true)
+        try {
+          await patientApi.deleteScreeningSchedule(schedule.id)
+          setSchedule(null)
+          toast.success('Reminders turned off.')
+        } catch {
+          toast.error('Could not turn off reminders.')
+        } finally {
+          setSaving(false)
+        }
+      },
+    })
   }
 
   if (loading) {
@@ -887,6 +949,11 @@ function ScreeningScheduleCard() {
           </button>
         )}
       </div>
+
+      <ConfirmDialog
+        {...confirmDialog}
+        onOpenChange={open => setConfirmDialog(prev => ({ ...prev, open }))}
+      />
     </div>
   )
 }
