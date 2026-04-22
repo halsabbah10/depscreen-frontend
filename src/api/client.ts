@@ -8,7 +8,7 @@
 import type {
   TokenResponse, LoginRequest, RegisterRequest, UserProfile,
   ScreeningResponse, ScreeningHistoryResponse,
-  ChatMessage, ChatHistoryResponse,
+  ChatHistoryResponse,
   DashboardStats, PatientSummary,
   CheckInPrompt, RedditScreeningResult,
   PatientDocument, EmergencyContact, SymptomTrend,
@@ -306,18 +306,6 @@ export const ingest = {
 
 export const chat = {
   // Screening-linked chat
-  async sendMessage(screeningId: string, message: string): Promise<ChatMessage> {
-    return post<ChatMessage>(`/chat/screening/${screeningId}`, { message })
-  },
-
-  async getHistory(screeningId: string): Promise<ChatHistoryResponse> {
-    return get<ChatHistoryResponse>(`/chat/screening/${screeningId}`)
-  },
-
-  async sendScreeningMessage(screeningId: string, message: string): Promise<ChatMessage> {
-    return post<ChatMessage>(`/chat/screening/${screeningId}`, { message })
-  },
-
   async getScreeningChatHistory(screeningId: string): Promise<ChatHistoryResponse> {
     return get<ChatHistoryResponse>(`/chat/screening/${screeningId}`)
   },
@@ -329,10 +317,6 @@ export const chat = {
 
   async createConversation(data?: ConversationCreate): Promise<ConversationResponse> {
     return post<ConversationResponse>('/chat/conversations', data)
-  },
-
-  async sendConversationMessage(conversationId: string, message: string): Promise<ChatMessage> {
-    return post<ChatMessage>(`/chat/conversations/${conversationId}/message`, { message })
   },
 
   async getConversationMessages(conversationId: string): Promise<ChatHistoryResponse> {
