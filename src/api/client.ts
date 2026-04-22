@@ -123,6 +123,23 @@ async function post<T>(path: string, body?: unknown): Promise<T> {
   return handleResponse<T>(response)
 }
 
+/** POST with an explicit AbortController timeout — for long-running pipeline calls. */
+async function postLongRunning<T>(path: string, body?: unknown, timeoutMs = 180_000): Promise<T> {
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), timeoutMs)
+  try {
+    const response = await fetch(`${API_BASE}${path}`, {
+      method: 'POST',
+      headers: authHeaders(),
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+      signal: controller.signal,
+    })
+    return handleResponse<T>(response)
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
 async function put<T>(path: string, body?: unknown): Promise<T> {
   const response = await fetchWithRetry(`${API_BASE}${path}`, {
     method: 'PUT',
@@ -253,7 +270,7 @@ export const auth = {
 
 export const screening = {
   async submit(text: string): Promise<ScreeningResponse> {
-    return post<ScreeningResponse>('/analyze', { text })
+    return postLongRunning<ScreeningResponse>('/analyze', { text })
   },
 
   async getById(id: string): Promise<ScreeningResponse> {
@@ -282,17 +299,17 @@ export const ingest = {
   },
 
   async submitCheckIn(responses: Record<string, string>): Promise<ScreeningResponse> {
-    return post<ScreeningResponse>('/ingest/checkin', { responses })
+    return postLongRunning<ScreeningResponse>('/ingest/checkin', { responses })
   },
 
   async analyzeReddit(username: string, mentalHealthOnly = true, maxPosts = 50): Promise<RedditScreeningResult> {
-    return post<RedditScreeningResult>('/ingest/reddit', {
+    return postLongRunning<RedditScreeningResult>('/ingest/reddit', {
       username, mental_health_only: mentalHealthOnly, max_posts: maxPosts,
     })
   },
 
   async analyzeX(username: string, mentalHealthFilter = true, maxPosts = 50): Promise<RedditScreeningResult> {
-    return post<RedditScreeningResult>('/ingest/x', {
+    return postLongRunning<RedditScreeningResult>('/ingest/x', {
       username, mental_health_filter: mentalHealthFilter, max_posts: maxPosts,
     })
   },

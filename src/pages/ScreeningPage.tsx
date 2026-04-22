@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
@@ -53,6 +53,20 @@ export function ScreeningPage() {
 
   const [view, setView] = useState<View>('select')
   const [loading, setLoading] = useState(false)
+  const [elapsed, setElapsed] = useState(0)
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  // Elapsed-time counter while loading
+  useEffect(() => {
+    if (loading) {
+      setElapsed(0)
+      timerRef.current = setInterval(() => setElapsed(s => s + 1), 1000)
+    } else {
+      if (timerRef.current) clearInterval(timerRef.current)
+      timerRef.current = null
+    }
+    return () => { if (timerRef.current) clearInterval(timerRef.current) }
+  }, [loading])
 
   // Check-in state
   const [prompts, setPrompts] = useState<CheckInPrompt[]>([])
@@ -114,8 +128,12 @@ export function ScreeningPage() {
       toast.success('Your responses have been received. Preparing your results.')
       navigate(`/results/${result.id}`)
     } catch (err: unknown) {
-      const errorDetail = err instanceof Object && 'detail' in err ? (err as { detail: string }).detail : null
-      toast.error(errorDetail || 'Something went wrong. Please try again when you are ready.')
+      if (err instanceof DOMException && err.name === 'AbortError') {
+        toast.error('The analysis is taking longer than expected. Please try again.')
+      } else {
+        const errorDetail = err instanceof Object && 'detail' in err ? (err as { detail: string }).detail : null
+        toast.error(errorDetail || 'Something went wrong. Please try again when you are ready.')
+      }
     } finally {
       setLoading(false)
     }
@@ -134,11 +152,15 @@ export function ScreeningPage() {
       toast.success('Analysis complete. Taking you to your results.')
       navigate(`/results/${result.screening_id}`)
     } catch (err: unknown) {
-      const errorDetail = err instanceof Object && 'detail' in err ? (err as { detail: string }).detail : null
-      toast.error(
-        errorDetail ||
-        `We could not retrieve posts from ${socialPlatform === 'reddit' ? 'Reddit' : 'X'}. Please double-check the username.`,
-      )
+      if (err instanceof DOMException && err.name === 'AbortError') {
+        toast.error('The analysis is taking longer than expected. Please try again.')
+      } else {
+        const errorDetail = err instanceof Object && 'detail' in err ? (err as { detail: string }).detail : null
+        toast.error(
+          errorDetail ||
+          `We could not retrieve posts from ${socialPlatform === 'reddit' ? 'Reddit' : 'X'}. Please double-check the username.`,
+        )
+      }
     } finally {
       setLoading(false)
     }
@@ -155,8 +177,12 @@ export function ScreeningPage() {
       toast.success('Your text has been analyzed. Preparing your results.')
       navigate(`/results/${result.screening_id}`)
     } catch (err: unknown) {
-      const errorDetail = err instanceof Object && 'detail' in err ? (err as { detail: string }).detail : null
-      toast.error(errorDetail || 'Upload did not complete. Please try again.')
+      if (err instanceof DOMException && err.name === 'AbortError') {
+        toast.error('The analysis is taking longer than expected. Please try again.')
+      } else {
+        const errorDetail = err instanceof Object && 'detail' in err ? (err as { detail: string }).detail : null
+        toast.error(errorDetail || 'Upload did not complete. Please try again.')
+      }
     } finally {
       setLoading(false)
     }
@@ -180,13 +206,19 @@ export function ScreeningPage() {
   // ── Loading overlay ───────────────────────────────────────────────────────
 
   if (loading) {
+    const phaseHint =
+      elapsed < 15 ? 'Taking a moment to understand your words'
+        : elapsed < 60 ? 'Running clinical analysis...'
+          : elapsed < 120 ? 'Almost there \u2014 preparing your results...'
+            : 'This is taking longer than usual \u2014 hang tight...'
+
     return (
       <PageTransition className="max-w-2xl mx-auto px-4 py-16">
         <div className="flex flex-col items-center justify-center min-h-[40vh] gap-6">
           <BreathingCircle
             size="xl"
             variant="therapeutic"
-            label="Taking a moment to understand your words"
+            label={phaseHint}
           />
           <p className="text-sm text-muted-foreground font-body text-center max-w-xs leading-relaxed">
             If you'd like, breathe along with the circle while we prepare your results.
