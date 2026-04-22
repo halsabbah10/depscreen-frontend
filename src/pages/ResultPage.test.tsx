@@ -35,6 +35,7 @@ const MOCK_SCREENING: ScreeningResponse = {
       coherence_score: 0.82,
       alternative_interpretation: null,
       flagged_for_review: false,
+      per_symptom_verdicts: [],
     },
     confidence_analysis: {
       should_trust_prediction: 'high',

@@ -23,11 +23,18 @@ export interface PostSymptomSummary {
 
 // ── Verification ─────────────────────────────────────────────────────────────
 
+export interface PerSymptomVerdict {
+  symptom: string
+  supported: boolean
+  reason: string
+}
+
 export interface EvidenceValidation {
   evidence_supports_prediction: boolean
   coherence_score: number
   alternative_interpretation: string | null
   flagged_for_review: boolean
+  per_symptom_verdicts: PerSymptomVerdict[]
 }
 
 export interface ConfidenceAnalysis {
