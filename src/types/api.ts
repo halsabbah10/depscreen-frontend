@@ -182,6 +182,10 @@ export interface PatientSummary {
   id: string
   full_name: string
   email: string
+  date_of_birth?: string | null
+  gender?: string | null
+  cpr_number?: string | null
+  profile_picture_url?: string | null
   last_screening_date: string | null
   last_severity: string | null
   last_symptom_count: number | null

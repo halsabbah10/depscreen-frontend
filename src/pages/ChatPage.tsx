@@ -21,7 +21,7 @@ import { useEffect, useState, useRef, useMemo } from 'react'
 import { ConfirmDialog } from '../components/ui/ConfirmDialog'
 import { useLocation, useNavigate, Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ArrowLeft, Send, Bot, Plus, MessageCircle, Trash2, Copy, Pencil } from 'lucide-react'
+import { ArrowLeft, Send, Bot, Plus, MessageCircle, Trash2, Copy, Pencil, PanelLeft } from 'lucide-react'
 import toast from 'react-hot-toast'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
@@ -54,6 +54,7 @@ export function ChatPage() {
   const [sending, setSending] = useState(false)
   const [loading, setLoading] = useState(true)
   const [conversations, setConversations] = useState<ConversationResponse[]>([])
+  const [sidebarOpen, setSidebarOpen] = useState(false)
   const [renamingId, setRenamingId] = useState<string | null>(null)
   const [renameValue, setRenameValue] = useState('')
   const [confirmDialog, setConfirmDialog] = useState<{
@@ -318,9 +319,29 @@ export function ChatPage() {
   // ── Standalone chat with sidebar ──
   return (
     <PageTransition className="flex-1 flex flex-col min-h-0">
-      <div className="max-w-6xl w-full mx-auto flex gap-4 flex-1 min-h-0">
-        {/* Sidebar */}
-        <aside className="w-64 shrink-0 card-warm overflow-hidden flex flex-col">
+      <div className="max-w-6xl w-full mx-auto flex gap-4 flex-1 min-h-0 relative">
+
+        {/* Mobile backdrop */}
+        {sidebarOpen && (
+          <div
+            className="fixed inset-0 z-40 bg-black/40 md:hidden"
+            onClick={() => setSidebarOpen(false)}
+            aria-hidden="true"
+          />
+        )}
+
+        {/* Sidebar — always visible on md+, overlay on mobile */}
+        <aside
+          className={[
+            'flex flex-col card-warm overflow-hidden shrink-0',
+            // Desktop: always in flow
+            'md:w-64 md:static md:z-auto md:translate-x-0',
+            // Mobile: fixed overlay, slide in/out
+            'fixed top-0 left-0 h-full w-72 z-50 transition-transform duration-300 ease-in-out',
+            sidebarOpen ? 'translate-x-0' : '-translate-x-full',
+            'md:flex',
+          ].join(' ')}
+        >
           <div className="px-4 py-3 border-b border-border">
             <button
               onClick={handleNewConversation}
@@ -353,7 +374,11 @@ export function ChatPage() {
                           return (
                             <li key={conv.id}>
                               <div
-                                onClick={() => !isRenaming && navigate(`/chat/c/${conv.id}`)}
+                                onClick={() => {
+                                  if (isRenaming) return
+                                  navigate(`/chat/c/${conv.id}`)
+                                  setSidebarOpen(false)
+                                }}
                                 role="button"
                                 tabIndex={0}
                                 className={`w-full text-left px-4 py-2.5 text-xs flex items-start gap-2 group transition-colors cursor-pointer ${
@@ -432,6 +457,7 @@ export function ChatPage() {
           inputRef={inputRef}
           bottomRef={bottomRef}
           onCopyMessage={handleCopyMessage}
+          onToggleSidebar={() => setSidebarOpen(prev => !prev)}
         />
       </div>
 
@@ -457,16 +483,28 @@ interface ChatPanelProps {
   inputRef: React.RefObject<HTMLTextAreaElement>
   bottomRef: React.RefObject<HTMLDivElement>
   onCopyMessage: (content: string) => void
+  /** Called when the mobile sidebar toggle button is pressed. Only used in standalone mode. */
+  onToggleSidebar?: () => void
 }
 
 function ChatPanel(props: ChatPanelProps) {
-  const { messages, input, setInput, handleSend, handleKeyDown, sending, user, suggestions, isScreeningChat, inputRef, bottomRef, onCopyMessage } = props
+  const { messages, input, setInput, handleSend, handleKeyDown, sending, user, suggestions, isScreeningChat, inputRef, bottomRef, onCopyMessage, onToggleSidebar } = props
 
   return (
     <div className="flex-1 flex flex-col card-warm overflow-hidden">
       {/* Chat header */}
       <div className="px-5 py-3 border-b border-border flex items-center gap-2.5">
-        <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+        {/* Mobile sidebar toggle — only in standalone mode */}
+        {onToggleSidebar && (
+          <button
+            onClick={onToggleSidebar}
+            className="md:hidden p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors shrink-0"
+            aria-label="Toggle conversations sidebar"
+          >
+            <PanelLeft className="w-4 h-4" />
+          </button>
+        )}
+        <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
           <Bot className="w-4 h-4 text-primary" />
         </div>
         <div>
