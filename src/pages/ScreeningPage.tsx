@@ -150,7 +150,9 @@ export function ScreeningPage() {
         ? await ingest.analyzeReddit(username.trim(), mentalHealthOnly)
         : await ingest.analyzeX(username.trim(), mentalHealthOnly)
       toast.success('Analysis complete. Taking you to your results.')
-      navigate(`/results/${result.screening_id}`)
+      navigate(`/results/${result.screening_id}`, {
+        state: { socialData: result },
+      })
     } catch (err: unknown) {
       if (err instanceof DOMException && err.name === 'AbortError') {
         toast.error('The analysis is taking longer than expected. Please try again.')
@@ -523,8 +525,8 @@ export function ScreeningPage() {
           </h1>
           <p className="font-body text-sm text-muted-foreground leading-relaxed max-w-md">
             We will gently review your public posts for language patterns
-            that may reflect how you have been feeling. Nothing is stored
-            beyond the screening.
+            that may reflect how you have been feeling. Analyzed text is stored
+            as part of your screening record.
           </p>
         </div>
 
@@ -611,8 +613,10 @@ export function ScreeningPage() {
           animate={{ opacity: 1 }}
           transition={{ delay: 0.4 }}
         >
-          Only your publicly visible posts are accessed. No login credentials,
-          API keys, or private data are required or collected.
+          Only your publicly visible posts are accessed. No login credentials
+          or private data are collected. Analyzed text is stored with your
+          screening record. You can delete any screening from your history
+          at any time.
         </motion.p>
       </PageTransition>
     )
