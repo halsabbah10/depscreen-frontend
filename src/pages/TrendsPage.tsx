@@ -17,6 +17,20 @@ import { PageTransition, StaggerChildren, StaggerItem } from '../components/ui/P
 import { BreathingCircle } from '../components/ui/BreathingCircle'
 import { EmptyState } from '../components/ui/EmptyState'
 
+const SYMPTOM_FRIENDLY_LABELS: Record<string, string> = {
+  DEPRESSED_MOOD: 'Depressed Mood',
+  ANHEDONIA: 'Loss of Interest',
+  APPETITE_CHANGE: 'Appetite Change',
+  SLEEP_ISSUES: 'Sleep Issues',
+  PSYCHOMOTOR: 'Psychomotor Changes',
+  FATIGUE: 'Fatigue',
+  WORTHLESSNESS: 'Worthlessness',
+  COGNITIVE_ISSUES: 'Difficulty Concentrating',
+  SUICIDAL_THOUGHTS: 'Thoughts of Self-Harm',
+  SPECIAL_CASE: 'Other',
+  NO_SYMPTOM: 'No Symptom',
+}
+
 export function TrendsPage() {
   const [data, setData] = useState<SymptomTrend | null>(null)
   const [loading, setLoading] = useState(true)
@@ -151,7 +165,7 @@ export function TrendsPage() {
                       <div className="flex flex-wrap gap-1.5 mt-2">
                         {entry.symptoms_detected.map(s => (
                           <span key={s} className={`text-[10px] px-2 py-0.5 rounded-full border font-body ${SYMPTOM_COLORS[s] || 'bg-muted text-muted-foreground border-border'}`}>
-                            {s.replace(/_/g, ' ')}
+                            {SYMPTOM_FRIENDLY_LABELS[s] || s.replace(/_/g, ' ').toLowerCase()}
                           </span>
                         ))}
                       </div>

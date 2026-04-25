@@ -5,7 +5,7 @@
  * fast enough to not feel sluggish.
  */
 
-import { motion } from 'framer-motion'
+import { motion, useReducedMotion } from 'framer-motion'
 import type { ReactNode } from 'react'
 
 interface PageTransitionProps {
@@ -14,6 +14,12 @@ interface PageTransitionProps {
 }
 
 export function PageTransition({ children, className = '' }: PageTransitionProps) {
+  const shouldReduce = useReducedMotion()
+
+  if (shouldReduce) {
+    return <div className={className}>{children}</div>
+  }
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 8 }}

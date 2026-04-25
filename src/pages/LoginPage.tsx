@@ -228,6 +228,8 @@ export function LoginPage() {
               <motion.div
                 initial={{ opacity: 0, y: -4 }}
                 animate={{ opacity: 1, y: 0 }}
+                role="alert"
+                aria-live="assertive"
                 className="mb-5 p-3.5 rounded-xl bg-red-50 border border-red-200 text-sm text-red-700 font-body"
               >
                 {error}

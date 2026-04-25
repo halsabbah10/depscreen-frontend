@@ -271,7 +271,7 @@ export function ResultPage() {
                     {evidenceSupported ? 'Consistent' : 'Partial'}
                   </p>
                   <p className="text-xs text-muted-foreground/60 font-body mt-1">
-                    {coherencePercent}% match
+                    {coherencePercent >= 75 ? 'Strong' : coherencePercent >= 50 ? 'Moderate' : 'Partial'} match
                   </p>
                 </div>
 
@@ -284,7 +284,7 @@ export function ResultPage() {
                     {isAuthentic ? 'Clear' : 'Harder to read'}
                   </p>
                   <p className="text-xs text-muted-foreground/60 font-body mt-1">
-                    {authenticityPercent}% score
+                    {authenticityPercent >= 75 ? 'Clear' : authenticityPercent >= 50 ? 'Mostly clear' : 'Needs review'}
                   </p>
                 </div>
 

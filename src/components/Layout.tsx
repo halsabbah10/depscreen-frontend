@@ -53,6 +53,10 @@ export function Layout() {
         gutter={10}
         toastOptions={{
           duration: 4500,
+          ariaProps: {
+            role: 'status',
+            'aria-live': 'polite',
+          },
           style: {
             fontFamily: 'Figtree, system-ui, sans-serif',
             fontSize: '13.5px',

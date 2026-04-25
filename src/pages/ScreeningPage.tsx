@@ -208,7 +208,7 @@ export function ScreeningPage() {
   if (loading) {
     const phaseHint =
       elapsed < 15 ? 'Taking a moment to understand your words'
-        : elapsed < 60 ? 'Running clinical analysis...'
+        : elapsed < 60 ? 'Taking a deeper look at your words...'
           : elapsed < 120 ? 'Almost there \u2014 preparing your results...'
             : 'This is taking longer than usual \u2014 hang tight...'
 

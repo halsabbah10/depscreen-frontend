@@ -15,6 +15,7 @@ import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { ProtectedRoute } from './components/ProtectedRoute'
 import { Layout } from './components/Layout'
 import { BreathingCircle } from './components/ui/BreathingCircle'
+import { ErrorBoundary } from './components/ui/ErrorBoundary'
 
 // Eager — always needed for the first paint or the 404 fallback.
 // Lazy — loaded on first navigation to the page. This drops ~30-50 KB
@@ -148,9 +149,11 @@ function AppRoutes() {
 export default function App() {
   return (
     <BrowserRouter>
-      <AuthProvider>
-        <AppRoutes />
-      </AuthProvider>
+      <ErrorBoundary>
+        <AuthProvider>
+          <AppRoutes />
+        </AuthProvider>
+      </ErrorBoundary>
     </BrowserRouter>
   )
 }

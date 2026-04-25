@@ -379,6 +379,14 @@ export function ChatPage() {
                                   navigate(`/chat/c/${conv.id}`)
                                   setSidebarOpen(false)
                                 }}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter' || e.key === ' ') {
+                                    e.preventDefault()
+                                    if (isRenaming) return
+                                    navigate(`/chat/c/${conv.id}`)
+                                    setSidebarOpen(false)
+                                  }
+                                }}
                                 role="button"
                                 tabIndex={0}
                                 className={`w-full text-left px-4 py-2.5 text-xs flex items-start gap-2 group transition-colors cursor-pointer ${

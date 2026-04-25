@@ -77,7 +77,7 @@ export function SymptomChecklist({ detections, symptomExplanations }: SymptomChe
                 {DSM5_SYMPTOM_LABELS[symptom]}
               </h3>
               <span className="text-xs text-muted-foreground/60 font-body shrink-0">
-                {Math.round(detection.confidence * 100)}% confidence
+                {detection.confidence >= 0.75 ? 'Strong signal' : detection.confidence >= 0.5 ? 'Moderate signal' : 'Weak signal'}
               </span>
             </div>
 
