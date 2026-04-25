@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useParams, Link, useNavigate } from 'react-router-dom'
+import { useParams, Link, useNavigate, useLocation } from 'react-router-dom'
 import {
   ArrowLeft, AlertCircle, MessageCircle,
   AlertTriangle, Phone, Download,
@@ -7,7 +7,7 @@ import {
 import toast from 'react-hot-toast'
 import { screening as screeningApi } from '../api/client'
 import { useAuth } from '../contexts/AuthContext'
-import type { ScreeningResponse } from '../types/api'
+import type { ScreeningResponse, SocialScreeningResult } from '../types/api'
 import { SeverityBadge } from '../components/SeverityBadge'
 import { SymptomChecklist } from '../components/SymptomChecklist'
 import { SentenceHighlighter } from '../components/SentenceHighlighter'
@@ -23,6 +23,9 @@ export function ResultPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [downloading, setDownloading] = useState(false)
+
+  const location = useLocation()
+  const socialData = (location.state as { socialData?: SocialScreeningResult })?.socialData ?? null
 
   const handleDownloadPdf = async () => {
     if (!screeningId) return
@@ -174,6 +177,92 @@ export function ResultPage() {
               explanation={symptom_analysis.severity_explanation}
             />
           </StaggerItem>
+
+          {/* ── Per-post breakdown (social media only, ephemeral) ── */}
+          {socialData && socialData.per_post_results.length > 0 && (
+            <StaggerItem>
+              <div className="space-y-4">
+                <div>
+                  <h2 className="font-display text-2xl text-foreground">
+                    Posts Analyzed
+                  </h2>
+                  <p className="text-sm text-muted-foreground font-body mt-1">
+                    {socialData.posts_fetched} post{socialData.posts_fetched !== 1 ? 's' : ''} from {socialData.platform === 'reddit' ? 'Reddit' : 'X'} — {socialData.posts_screened} screened
+                    {socialData.subreddits_analyzed && socialData.subreddits_analyzed.length > 0 && (
+                      <span className="ml-1">
+                        across {socialData.subreddits_analyzed.map(s => `r/${s}`).join(', ')}
+                      </span>
+                    )}
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  {[...socialData.per_post_results]
+                    .sort((a, b) => {
+                      const order = { severe: 0, moderate: 1, mild: 2, none: 3 }
+                      return (order[a.severity as keyof typeof order] ?? 3) - (order[b.severity as keyof typeof order] ?? 3)
+                    })
+                    .map((post, i) => {
+                      const hasSx = post.symptom_count > 0
+                      return (
+                        <details key={i} open={hasSx} className="group">
+                          <summary className={`
+                            flex items-center justify-between p-3 rounded-lg border cursor-pointer
+                            transition-colors duration-200
+                            ${hasSx ? 'card-warm border-primary/15' : 'card border-border/60'}
+                            hover:border-primary/25
+                          `}>
+                            <div className="flex items-center gap-3 min-w-0">
+                              <span className="text-xs text-muted-foreground font-body shrink-0">
+                                {post.subreddit ? `r/${post.subreddit}` : socialData.platform === 'x' ? 'X' : ''}
+                              </span>
+                              {post.date && (
+                                <span className="text-xs text-muted-foreground/50 font-body shrink-0">
+                                  {new Date(post.date).toLocaleDateString()}
+                                </span>
+                              )}
+                              <span className="text-sm text-foreground font-body truncate">
+                                {post.title || post.text_preview || ''}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2 shrink-0 ml-2">
+                              {post.like_count != null && post.like_count > 0 && (
+                                <span className="text-xs text-muted-foreground/40 font-body">
+                                  {post.like_count} likes
+                                </span>
+                              )}
+                              <span className={`
+                                text-[10px] font-body font-medium px-2 py-0.5 rounded-full
+                                ${post.severity === 'severe' ? 'bg-red-100 text-red-700' :
+                                  post.severity === 'moderate' ? 'bg-amber-100 text-amber-700' :
+                                  post.severity === 'mild' ? 'bg-yellow-50 text-yellow-700' :
+                                  'bg-muted text-muted-foreground'}
+                              `}>
+                                {post.severity}
+                              </span>
+                            </div>
+                          </summary>
+                          {hasSx && (
+                            <div className="px-3 pb-3 pt-1">
+                              <div className="flex flex-wrap gap-1.5 mt-1">
+                                {post.symptoms.map((sx, j) => (
+                                  <span
+                                    key={j}
+                                    className="text-[11px] font-body px-2 py-0.5 rounded-full bg-primary/8 text-primary/80"
+                                  >
+                                    {sx.symptom_label}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </details>
+                      )
+                    })}
+                </div>
+              </div>
+            </StaggerItem>
+          )}
 
           {/* ── Divider ── */}
           <StaggerItem>
