@@ -21,10 +21,6 @@ export default defineConfig({
           markdown: ['react-markdown', 'remark-gfm'],
           radix: [
             '@radix-ui/react-alert-dialog',
-            '@radix-ui/react-dialog',
-            '@radix-ui/react-progress',
-            '@radix-ui/react-slot',
-            '@radix-ui/react-tabs',
           ],
           icons: ['lucide-react'],
         },
