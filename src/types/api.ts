@@ -201,9 +201,9 @@ export interface CheckInPrompt {
   follow_up: string | null
 }
 
-export interface RedditScreeningResult {
+export interface SocialScreeningResult {
   screening_id: string
-  platform: string
+  platform: 'reddit' | 'x'
   username: string
   posts_fetched: number
   posts_screened: number
@@ -215,6 +215,8 @@ export interface RedditScreeningResult {
     title?: string
     text_preview?: string
     date?: string
+    like_count?: number
+    retweet_count?: number
     symptoms: SymptomDetection[]
     symptom_count: number
     severity: string

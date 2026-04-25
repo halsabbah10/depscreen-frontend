@@ -10,7 +10,7 @@ import type {
   ScreeningResponse, ScreeningHistoryResponse,
   ChatHistoryResponse,
   DashboardStats, PatientSummary,
-  CheckInPrompt, RedditScreeningResult,
+  CheckInPrompt, SocialScreeningResult,
   PatientDocument, EmergencyContact, SymptomTrend,
   MedicationCreate, MedicationResponse,
   AllergyCreate, AllergyResponse,
@@ -302,14 +302,14 @@ export const ingest = {
     return postLongRunning<ScreeningResponse>('/ingest/checkin', { responses })
   },
 
-  async analyzeReddit(username: string, mentalHealthOnly = true, maxPosts = 50): Promise<RedditScreeningResult> {
-    return postLongRunning<RedditScreeningResult>('/ingest/reddit', {
+  async analyzeReddit(username: string, mentalHealthOnly = true, maxPosts = 50): Promise<SocialScreeningResult> {
+    return post<SocialScreeningResult>('/ingest/reddit', {
       username, mental_health_only: mentalHealthOnly, max_posts: maxPosts,
     })
   },
 
-  async analyzeX(username: string, mentalHealthFilter = true, maxPosts = 50): Promise<RedditScreeningResult> {
-    return postLongRunning<RedditScreeningResult>('/ingest/x', {
+  async analyzeX(username: string, mentalHealthFilter = true, maxPosts = 50): Promise<SocialScreeningResult> {
+    return post<SocialScreeningResult>('/ingest/x', {
       username, mental_health_filter: mentalHealthFilter, max_posts: maxPosts,
     })
   },
